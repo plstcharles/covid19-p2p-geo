@@ -4,6 +4,39 @@
 
 #include "../include/api.hpp"
 
+#include <cstdint>
+
+#include <geos/geom/PrecisionModel.h>
+#include <geos/geom/GeometryFactory.h>
+#include <geos/geom/Geometry.h>
+#include <geos/geom/Point.h>
+#include <geos/geom/LinearRing.h>
+#include <geos/geom/LineString.h>
+#include <geos/geom/Polygon.h>
+#include <geos/geom/GeometryCollection.h>
+#include <geos/geom/Coordinate.h>
+#include <geos/geom/CoordinateSequence.h>
+#include <geos/geom/CoordinateArraySequence.h>
+#include <geos/geom/IntersectionMatrix.h>
+#include <geos/io/WKBReader.h>
+#include <geos/io/WKBWriter.h>
+#include <geos/io/WKTWriter.h>
+#include <geos/util/GeometricShapeFactory.h>
+#include <geos/geom/util/SineStarFactory.h>
+#include <geos/util/GEOSException.h>
+#include <geos/util/IllegalArgumentException.h>
+#include <geos/operation/linemerge/LineMerger.h>
+#include <geos/operation/polygonize/Polygonizer.h>
+#include <geos/constants.h>
+#include <vector>
+#include <sstream>
+#include <iomanip>
+#include <iostream>
+#include <cstdlib>
+#include <lz4.h>
+
+#include "H5Cpp.h"
+
 void api_hello() {
     std::cout << "Hello, World!" << std::endl;
 }

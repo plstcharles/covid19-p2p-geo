@@ -19,6 +19,7 @@
 *.exe
 *.pch
 *.obj
+__pycache__/
 
 # Packages #
 ############

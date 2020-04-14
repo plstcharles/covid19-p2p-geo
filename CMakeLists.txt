@@ -42,16 +42,21 @@ add_library(
             "api/src/api.cpp"
             "api/include/api.hpp"
 )
+add_dependencies(
+    covid19_p2p_geo_api
+        hdf5_local
+)
 target_include_directories(
     covid19_p2p_geo_api
         PUBLIC
             "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/api/include>"
-            ${_hdf5_include_dirs}
+            "$<BUILD_INTERFACE:${_hdf5_include_dirs}>"
 )
 target_link_libraries(
     covid19_p2p_geo_api
         PRIVATE
             geos
+            "$<BUILD_INTERFACE:${_hdf5_libs}>"
             lz4
 )
 
@@ -67,13 +72,13 @@ target_include_directories(
     covid19_p2p_geo_tester
         PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/api/include>"
-        ${_hdf5_include_dirs}
+        "$<BUILD_INTERFACE:${_hdf5_include_dirs}>"
 )
 target_link_libraries(
     covid19_p2p_geo_tester
         PUBLIC
             geos
-            ${_hdf5_libs}
+            "$<BUILD_INTERFACE:${_hdf5_libs}>"
             lz4
             covid19_p2p_geo_api
 )

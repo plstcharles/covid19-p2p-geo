@@ -2,6 +2,7 @@ import logging
 import os
 import typing
 
+import h5py
 import numpy as np
 import ogr
 import pandas as pd
@@ -30,13 +31,14 @@ census_member_ids_of_interest = {  # these should hopefully rarely have NaNs
 }
 
 
-class CensusCompactor:
-    """Compresses useful census data inside a HDF5 archive."""
+class CensusDataExtractor:
+    """Extracts useful census data and optionally exports it in an HDF5 archive."""
 
     def __init__(
             self,
             census_records_dir_path: typing.AnyStr,
             census_boundaries_dir_path: typing.AnyStr,
+            output_hdf5_path: typing.Optional[typing.AnyStr] = None,
     ):
         assert os.path.isdir(census_boundaries_dir_path), \
             f"invalid census boundaries directory path: {census_boundaries_dir_path}"
@@ -48,8 +50,59 @@ class CensusCompactor:
             census_records_dir_path,
             expected_da_count=len(self.dauid_map),
         )
-        # @@@ todo next: merge stats + geometries
-        # ... then, export to hdf5
+        assert all([k in self.dauid_map for k in dauid_stats_map]), \
+            "unexpected mis-overlap between da stats & geometries"
+        for dauid, stats in dauid_stats_map.items():
+            for k, v in stats.items():
+                self.dauid_map[dauid][k] = v
+        if output_hdf5_path is not None:
+            self._export_raw_hdf5(
+                self.dauid_map,
+                self.cduid_map,
+                self.ptuid_map,
+                output_hdf5_path,
+            )
+
+    @staticmethod
+    def _export_raw_hdf5(
+            dauid_map: typing.Dict[str, typing.Dict],
+            cduid_map: typing.Dict[str, typing.List[typing.Dict]],
+            ptuid_map: typing.Dict[str, typing.List[typing.Dict]],
+            output_hdf5_path: typing.AnyStr,
+            compress_wkb_lz4: bool = False,
+    ):
+        logger.debug(f"exporting raw data to: {output_hdf5_path}")
+        with h5py.File(output_hdf5_path, "w") as fd:
+            fd.attrs["da_count"] = len(dauid_map)
+            fd.attrs["cd_count"] = len(cduid_map)
+            fd.attrs["pt_count"] = len(ptuid_map)
+            fd.attrs["stat_cols"] = ["pop", "dwellings", "area"]
+            fd.create_dataset(
+                "ptuid",
+                data=np.asarray([np.uint16(v["ptuid"]) for v in dauid_map.values()]),
+            )
+            fd.create_dataset(
+                "cduid",
+                data=np.asarray([np.uint16(v["cduid"]) for v in dauid_map.values()]),
+            )
+            fd.create_dataset(
+                "dauid",
+                data=np.asarray([np.uint32(v["dauid"]) for v in dauid_map.values()]),
+            )
+            stats = np.asarray([
+                [np.float32(v["pop"]), np.float32(v["dwellings"]), np.float32(v["area"])]
+                for v in dauid_map.values()])
+            fd.create_dataset("stats", data=stats)
+            wkb_dataset = fd.create_dataset(
+                "wkb",
+                shape=(len(dauid_map), ),
+                maxshape=(len(dauid_map),),
+                dtype=h5py.special_dtype(vlen=np.uint8),
+            )
+            assert not compress_wkb_lz4, "missing lz4 compression impl @@@"
+            for da_idx, da_dict in tqdm.tqdm(enumerate(dauid_map.values()), total=len(dauid_map)):
+                wkb_dataset[da_idx] = np.frombuffer(da_dict["wkb"], dtype=np.uint8)
+        logger.debug(f"exportation complete")
 
 
     @staticmethod
@@ -102,6 +155,7 @@ class CensusCompactor:
         boundaries_layer = boundaries_fd.GetLayer()
         boundaries_count = boundaries_layer.GetFeatureCount()
         logger.debug(f"will load {boundaries_count} features")
+        # @@@@ might need to reproject features if not in WGS84
         boundaries_layer_defs = boundaries_layer.GetLayerDefn()
         boundaries_attrib_count = boundaries_layer_defs.GetFieldCount()
         attribs_full_str = f"each feature has {boundaries_attrib_count} attributes:"
@@ -143,9 +197,7 @@ class CensusCompactor:
         return dauid_map, cduid_map, ptuid_map
 
 
-
 if __name__ == "__main__":
-    # @@@@ TODO: CONVERT TO PROPER TEST
     logging.basicConfig()
     logging.getLogger().setLevel(logging.NOTSET)
     root_data_path = "/home/perf6/dev/covid19-p2p-geo/data/"
@@ -153,7 +205,9 @@ if __name__ == "__main__":
         os.path.join(root_data_path, "low_level_data_98-401-X2016044_eng_CSV")
     _census_boundaries_dir_path = \
         os.path.join(root_data_path, "boundaries_digital_dissemination_areas_lada000b16a_e")
-    CensusCompactor(
+    _output_hdf5_path = os.path.join(root_data_path, "da_pop_geometries.hdf5")
+    CensusDataExtractor(
         census_records_dir_path=_census_records_dir_path,
         census_boundaries_dir_path=_census_boundaries_dir_path,
+        output_hdf5_path=_output_hdf5_path,
     )

@@ -2,7 +2,15 @@
 # derived from https://github.com/bast/hdf5-cmake-example/blob/master/CMakeLists.txt
 
 include(ExternalProject)
-set(ExternalProjectCMakeArgs -DHDF5_BUILD_CPP_LIB=ON)
+set(
+    ExternalProjectCMakeArgs
+        -DBUILD_SHARED_LIBS=OFF
+        -DBUILD_STATIC_LIBS=ON
+        -DBUILD_TESTING=OFF
+        -DHDF5_BUILD_CPP_LIB=ON
+        -DHDF5_BUILD_EXAMPLES=OFF
+        -DHDF5_BUILD_TOOLS=OFF
+)
 set(_hdf5_version "1.12.0")
 set(_hdf5_pkg_url "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.12/hdf5-1.12.0/src/hdf5-1.12.0.tar.gz")
 file(MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/hdf5_local/src)

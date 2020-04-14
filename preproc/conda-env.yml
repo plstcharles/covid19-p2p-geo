@@ -1,0 +1,18 @@
+name: covid19-p2p-geo
+channels:
+  - conda-forge
+dependencies:
+  - affine
+  - gdal
+  - geojson
+  - h5py
+  - lz4
+  - matplotlib
+  - numpy
+  - pandas
+  - pip
+  - pyproj
+  - pyyaml
+  - shapely
+  - tqdm
+

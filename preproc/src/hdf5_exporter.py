@@ -100,10 +100,12 @@ class CensusDataExtractor:
                 dtype=h5py.special_dtype(vlen=np.uint8),
             )
             assert not compress_wkb_lz4, "missing lz4 compression impl @@@"
+            total_wkb_bytes = 0
             for da_idx, da_dict in tqdm.tqdm(enumerate(dauid_map.values()), total=len(dauid_map)):
                 wkb_dataset[da_idx] = np.frombuffer(da_dict["wkb"], dtype=np.uint8)
+                total_wkb_bytes += len(da_dict["wkb"])
+            wkb_dataset.attrs["byte_count"] = total_wkb_bytes
         logger.debug(f"exportation complete")
-
 
     @staticmethod
     def _parse_records(
@@ -197,6 +199,24 @@ class CensusDataExtractor:
         return dauid_map, cduid_map, ptuid_map
 
 
+def _test_parse_raw_hdf5(hdf5_path: typing.AnyStr):
+    logger.debug(f"parse-testing hdf5 at: {hdf5_path}")
+    with h5py.File(hdf5_path, "r") as fd:
+        assert np.array_equal(fd.attrs["stat_cols"], ["pop", "dwellings", "area"])
+        assert fd.attrs["da_count"] >= fd.attrs["cd_count"]
+        assert fd.attrs["cd_count"] >= fd.attrs["pt_count"]
+        assert fd["ptuid"].shape[0] == fd.attrs["da_count"]
+        assert fd["cduid"].shape[0] == fd.attrs["da_count"]
+        assert fd["dauid"].shape[0] == fd.attrs["da_count"]
+        assert fd["stats"].shape[0] == fd.attrs["da_count"]
+        assert fd["stats"].shape[1] == 3
+        assert fd["wkb"].shape[0] == fd.attrs["da_count"]
+        test1 = fd["wkb"][0]
+        test2 = fd["wkb"][1]
+        test3 = fd["wkb"][2]
+    logger.debug("parsing completed.")
+
+
 if __name__ == "__main__":
     logging.basicConfig()
     logging.getLogger().setLevel(logging.NOTSET)
@@ -206,8 +226,9 @@ if __name__ == "__main__":
     _census_boundaries_dir_path = \
         os.path.join(root_data_path, "boundaries_digital_dissemination_areas_lada000b16a_e")
     _output_hdf5_path = os.path.join(root_data_path, "da_pop_geometries.hdf5")
-    CensusDataExtractor(
-        census_records_dir_path=_census_records_dir_path,
-        census_boundaries_dir_path=_census_boundaries_dir_path,
-        output_hdf5_path=_output_hdf5_path,
-    )
+    #CensusDataExtractor(
+    #    census_records_dir_path=_census_records_dir_path,
+    #    census_boundaries_dir_path=_census_boundaries_dir_path,
+    #    output_hdf5_path=_output_hdf5_path,
+    #)
+    _test_parse_raw_hdf5(_output_hdf5_path)

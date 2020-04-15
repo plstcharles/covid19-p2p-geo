@@ -2,6 +2,6 @@
 #include "api.hpp"
 
 int main() {
-    api_hello();
+    print_debug_info();
     return 0;
 }

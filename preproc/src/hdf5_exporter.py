@@ -6,6 +6,8 @@ import h5py
 import numpy as np
 import ogr
 import pandas as pd
+import shapely
+import shapely.wkb
 import tqdm
 
 import utils
@@ -211,9 +213,10 @@ def _test_parse_raw_hdf5(hdf5_path: typing.AnyStr):
         assert fd["stats"].shape[0] == fd.attrs["da_count"]
         assert fd["stats"].shape[1] == 3
         assert fd["wkb"].shape[0] == fd.attrs["da_count"]
-        test1 = fd["wkb"][0]
-        test2 = fd["wkb"][1]
-        test3 = fd["wkb"][2]
+        geom0_wkb = fd["wkb"][0].tobytes()
+        geom0 = shapely.wkb.loads(geom0_wkb)
+        geom1_wkb = fd["wkb"][1].tobytes()
+        geom1 = shapely.wkb.loads(geom1_wkb)
     logger.debug("parsing completed.")
 
 

@@ -1,3 +1,3 @@
 #pragma once
 
-void api_hello();
+void print_debug_info();

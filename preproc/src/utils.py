@@ -1,5 +1,9 @@
+import hashlib
 import os
 import typing
+
+import requests
+import tqdm
 
 
 def get_unique_file_by_extension(
@@ -26,3 +30,44 @@ def get_unique_file_by_extension(
     target_file_name = next(p for p in file_paths if p.endswith(extension))
     target_file_path = os.path.join(directory_path, target_file_name)
     return target_file_path
+
+
+def download_file_with_progress_bar(
+        file_url: typing.AnyStr,
+        file_path: typing.AnyStr,
+        block_size: int = 1024,
+):
+    """Downloads a file from a given URL with a tqdm-based progress bar.
+
+    Will throw if the number of downloaded bytes does not match the expected
+    file size.
+
+    Args:
+        file_url: the URL to GET using requests.
+        file_path: the path where the file should be saved.
+        block_size: block size to download/update using.
+
+    Returns:
+        The number of downloaded bytes.
+    """
+    r = requests.get(file_url, stream=True)
+    total_size = int(r.headers.get('content-length', 0))
+    progr = tqdm.tqdm(total=total_size, unit='iB', unit_scale=True)
+    with open(file_path, "wb") as fd:
+        for data in r.iter_content(block_size):
+            progr.update(len(data))
+            fd.write(data)
+    progr.close()
+    assert total_size == 0 or progr.n != total_size, "unexpected file size"
+
+
+def compute_md5_hash(
+        file_path: typing.AnyStr,
+        chunk_size: int = 4096,
+):
+    """Computes the md5 hash of a file for checksum purposes."""
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            hash_md5.update(chunk)
+    return hash_md5.hexdigest()

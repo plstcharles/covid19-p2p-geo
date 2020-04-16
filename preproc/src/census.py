@@ -140,7 +140,7 @@ class CensusDataExtractor:
             fd.attrs["stat_cols"] = list(census_member_ids_of_interest.values())
             fd.create_dataset(
                 "cduid",
-                data=np.asarray([np.uint16(id) for id in self.cduid_map.keys()]),
+                data=np.asarray([np.uint32(id) for id in self.cduid_map.keys()]),
             )
             stats = np.asarray([
                 [np.float32(sum([da[mid] for da in das]))
@@ -196,11 +196,11 @@ class CensusDataExtractor:
             CensusDataExtractor._export_hdf5_header_attribs(dauid_map, cduid_map, ptuid_map, fd)
             fd.create_dataset(
                 "ptuid",
-                data=np.asarray([np.uint16(v["ptuid"]) for v in dauid_map.values()]),
+                data=np.asarray([np.uint32(v["ptuid"]) for v in dauid_map.values()]),
             )
             fd.create_dataset(
                 "cduid",
-                data=np.asarray([np.uint16(v["cduid"]) for v in dauid_map.values()]),
+                data=np.asarray([np.uint32(v["cduid"]) for v in dauid_map.values()]),
             )
             fd.create_dataset(
                 "dauid",

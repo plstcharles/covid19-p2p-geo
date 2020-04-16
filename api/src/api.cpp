@@ -88,7 +88,7 @@ GeomArray readWKBGeometries(uint8_t* aBuffer, size_t nBufferSize, size_t nGeomCo
 
 GeomArray readHDF5Geometries(const H5::H5File& oH5Archive) {
     const hsize_t nDACount = getHDF5GeomCount(oH5Archive);
-    const H5::DataSet oWKBDataset = oH5Archive.openDataSet("wkb");
+    const H5::DataSet oWKBDataset = oH5Archive.openDataSet("da_wkb");
     const H5::Attribute oWKBByteCountAttrib = oWKBDataset.openAttribute("byte_count");
     const H5::DataType tCountType(H5::PredType::NATIVE_INT64);
     assert(oWKBByteCountAttrib.getDataType() == tCountType);
@@ -130,7 +130,7 @@ GeomArray readHDF5Geometries(const H5::H5File& oH5Archive) {
 
 GeomStatsArray readHDF5Stats(const H5::H5File& oH5Archive) {
     const hsize_t nDACount = getHDF5GeomCount(oH5Archive);
-    const H5::DataSet oStatsDataset = oH5Archive.openDataSet("stats");
+    const H5::DataSet oStatsDataset = oH5Archive.openDataSet("da_stats");
     H5::DataSpace oStatsSpace = oStatsDataset.getSpace();
     assert(oStatsSpace.getSimpleExtentNdims() == 2);
     hsize_t anStatsDims[2];
@@ -179,7 +179,7 @@ void print_debug_info() {
     // add proper exception handling w/o rethrowing to top level?
 
     // @@@@ DIRTY CHEAT
-    const std::string sHDF5FilePath = "/home/perf6/dev/covid19-p2p-geo/data/da_pop_geometries.hdf5";
+    const std::string sHDF5FilePath = "/home/perf6/dev/covid19-p2p-geo/data/full.hdf5";
 
 
     const H5::H5File oH5Archive(sHDF5FilePath, H5F_ACC_RDONLY);

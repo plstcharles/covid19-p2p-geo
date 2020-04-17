@@ -14,7 +14,7 @@ void prepareRegionsNear(double dLatitude, double dLongitude, const std::string& 
     }
 }
 
-std::string fetchRegionsUID(double dLatitude, double dLongitude, const std::string& sDataRootPath) {
+std::string fetchRegionUID(double dLatitude, double dLongitude, const std::string& sDataRootPath) {
     GeoRegionTreePtr pHighLevelTree = prepareHighLevelRegionTree(sDataRootPath);
     assert(pHighLevelTree);
     const std::vector<GeoRegionPtr>& vHits = fetchRegionHits(dLatitude, dLongitude, pHighLevelTree);

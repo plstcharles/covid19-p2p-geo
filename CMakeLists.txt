@@ -10,19 +10,21 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_BINARY_DIR}")
 generation should be done in a local subfolder, e.g. '${CMAKE_SOURCE_DIR}/build'.")
 endif()
 
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
-set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib:$ORIGIN/")
-set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 include(FrameworkUtils)
 include(ExternalProject)
 include(DownloadProject)
 include(GetGitRevisionDescription)
 include(CheckFunctionExists)
 
-project(covid19_p2p_geo)
+project(covid19_p2p_geo C CXX)
+
+include(GNUInstallDirs)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_LIBDIR})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_BINDIR})
+set(CMAKE_INSTALL_RPATH "$ORIGIN/../lib:$ORIGIN/")
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 set(COVID19_P2P_GEO_VERSION_MAJOR 0)
 set(COVID19_P2P_GEO_VERSION_MINOR 1)
@@ -34,19 +36,31 @@ set(COVID19_P2P_GEO_VERSION_PLAIN
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release)
+endif()
+
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+
 add_subdirectory(3rdparty)
 
 add_definitions(-Wfatal-errors)
 
-add_library(
+if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
+endif()
+
+add_library(covid19_p2p_geo_api STATIC)
+target_sources(
     covid19_p2p_geo_api
-        STATIC
+        PRIVATE
             "api/src/api.cpp"
-            "api/include/api.hpp"
             "api/include/generic_utils.hpp"
             "api/include/geo_utils.hpp"
             "api/include/hdf5_utils.hpp"
             "api/include/regions.hpp"
+        PUBLIC
+            "api/include/api.hpp"
 )
 add_dependencies(
     covid19_p2p_geo_api
@@ -55,8 +69,8 @@ add_dependencies(
 target_include_directories(
     covid19_p2p_geo_api
         PUBLIC
-            "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/api/include>"
-            "$<BUILD_INTERFACE:${_hdf5_include_dirs}>"
+            "${CMAKE_SOURCE_DIR}/api/include"
+            "${_hdf5_include_dirs}"
 )
 target_link_libraries(
     covid19_p2p_geo_api

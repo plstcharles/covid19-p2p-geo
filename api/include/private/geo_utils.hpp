@@ -140,10 +140,11 @@ struct GeoRegionTree {
     explicit GeoRegionTree(
             const GeoRegionArray& vRegions,
             size_t nDefaultNodeCapacity = 10u):
-            tBuildTimestamp(std::chrono::high_resolution_clock::now()),
             mRegions(getGeoRegionMapFromArray(vRegions)),
             nParentUID(getParentUID(vRegions.begin(), vRegions.end())),
             pEnvelope(getGeomArrayEnvelope(vRegions)),
+            tBuildTimestamp(std::chrono::high_resolution_clock::now()),
+            tLastAccessTimestamp(tBuildTimestamp),
             oTree(nDefaultNodeCapacity) {
         buildTree();
     }
@@ -152,10 +153,12 @@ struct GeoRegionTree {
     explicit GeoRegionTree(
             const GeoRegionMap& mRegions_,
             size_t nDefaultNodeCapacity = 10u):
-            tBuildTimestamp(std::chrono::high_resolution_clock::now()),
             mRegions(mRegions_),
             nParentUID(getParentUID(mRegions.begin(), mRegions.end())),
-            pEnvelope(getGeomArrayEnvelope(mRegions)), oTree(nDefaultNodeCapacity) {
+            pEnvelope(getGeomArrayEnvelope(mRegions)),
+            tBuildTimestamp(std::chrono::high_resolution_clock::now()),
+            tLastAccessTimestamp(tBuildTimestamp),
+            oTree(nDefaultNodeCapacity) {
         buildTree();
     }
 
@@ -193,9 +196,9 @@ struct GeoRegionTree {
 
     /// returns the list of tree regions that contain the query envelope
     std::vector<GeoRegionPtr> findGeoRegionHits(const geos::geom::Envelope* pQueryEnv) {
-        // abstract tree query func is not constant, better use a mutex for thread safety...
         std::vector<GeoRegionPtr> vHitRegions;
         const std::lock_guard<std::mutex> oLock(m_oTreeMutex);
+        tLastAccessTimestamp = std::chrono::high_resolution_clock::now();
         std::vector<void*> vQueryHits;
         oTree.query(pQueryEnv, vQueryHits);
         vHitRegions.reserve(vQueryHits.size());
@@ -204,14 +207,19 @@ struct GeoRegionTree {
         return vHitRegions;
     }
 
-    /// timestamp at which the tree was built (for memory cleanup purposes)
-    const std::chrono::high_resolution_clock::time_point tBuildTimestamp;
+    /// returns a copy of the 'last accessed' timestamp
+    inline std::chrono::high_resolution_clock::time_point getLastAccessedTimestamp() const {
+        return tLastAccessTimestamp;
+    }
+
     /// map of the geographic regions covered by the tree
     const GeoRegionMap mRegions;
     /// unique idenfitier (UID) of the parent of all tree regions
     const GeoRegionUID nParentUID;
     /// envelope (bounding box) geometry covered by this tree
     const Geometry pEnvelope;
+    /// timestamp at which the tree was built (for memory cleanup purposes)
+    const std::chrono::high_resolution_clock::time_point tBuildTimestamp;
 
 private:
 
@@ -223,6 +231,7 @@ private:
         oTree.build();
     }
 
+    std::chrono::high_resolution_clock::time_point tLastAccessTimestamp;
     geos::index::strtree::STRtree oTree;
     std::mutex m_oTreeMutex;
 };
@@ -270,6 +279,15 @@ struct GeoRegionTreeCacher {
         return iMatchedGeoRegionTree->second;
     }
 
+    /// releases a tree based on its session name (will do nothing if tree is missing)
+    static void releaseGeoRegionTree(const SessionNameType& sSessionName) {
+        assert(sSessionName != AUTO_SESSION_NAME); // not supported here
+        const std::lock_guard<std::mutex> oLock(s_oGeoTreeMapMutex);
+        auto iMatchedGeoRegionTree = s_mGeoTrees.find(sSessionName);
+        if(iMatchedGeoRegionTree != s_mGeoTrees.end())
+            s_mGeoTrees.erase(iMatchedGeoRegionTree);
+    }
+
     /// returns a proper session name for a set of regions that corresponds to their common parent UID
     static SessionNameType suggestSessionName(const GeoRegionMap& mRegions) {
         const GeoRegionUIDArray vGeoRegionUIds = getKeyArrayFromMap(mRegions);
@@ -285,6 +303,16 @@ struct GeoRegionTreeCacher {
             vGeoRegionUIDs.push_back(pRegion->nUID);
         const GeoRegionUID nID = getParentUID(vRegions.begin(), vRegions.end());
         return std::to_string(nID);
+    }
+
+    /// returns the session names for all active region trees
+    static std::vector<SessionNameType> getSessionNames() {
+        std::vector<SessionNameType> vSessionNames;
+        const std::lock_guard<std::mutex> oLock(s_oGeoTreeMapMutex);
+        vSessionNames.reserve(s_mGeoTrees.size());
+        for(const auto& oTreePair : s_mGeoTrees)
+            vSessionNames.push_back(oTreePair.first);
+        return vSessionNames;
     }
 
 private:

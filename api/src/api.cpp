@@ -6,7 +6,7 @@
 std::map<SessionNameType, GeoRegionTreePtr> GeoRegionTreeCacher::s_mGeoTrees;
 std::mutex GeoRegionTreeCacher::s_oGeoTreeMapMutex;
 
-void prepareRegionsNear(double dLatitude, double dLongitude, const std::string& sDataRootPath) {
+void prepareNear(double dLatitude, double dLongitude, const std::string& sDataRootPath) {
     GeoRegionTreePtr pHighLevelTree = prepareHighLevelRegionTree(sDataRootPath);
     assert(pHighLevelTree);
     const std::vector<GeoRegionPtr>& vHits = fetchRegionHits(dLatitude, dLongitude, pHighLevelTree);
@@ -17,7 +17,7 @@ void prepareRegionsNear(double dLatitude, double dLongitude, const std::string& 
     }
 }
 
-std::string fetchRegionUID(double dLatitude, double dLongitude, const std::string& sDataRootPath) {
+std::string fetchUID(double dLatitude, double dLongitude, const std::string& sDataRootPath) {
     GeoRegionTreePtr pHighLevelTree = prepareHighLevelRegionTree(sDataRootPath);
     assert(pHighLevelTree);
     const std::vector<GeoRegionPtr>& vHits = fetchRegionHits(dLatitude, dLongitude, pHighLevelTree);
@@ -31,6 +31,19 @@ std::string fetchRegionUID(double dLatitude, double dLongitude, const std::strin
             return std::to_string(pResult->nUID);
     }
     return GLOBAL_REGION_STR; // no clean intersection found, return global ID (0)
+}
+
+uint32_t getCachedRegionTreeCount() {
+    return (uint32_t)GeoRegionTreeCacher::getSessionNames().size();
+}
+
+void releaseUnusedCache(double dTimeout_seconds) {
+    const std::vector<SessionNameType> vUIDs = GeoRegionTreeCacher::getSessionNames();
+    for(const SessionNameType& sUID : vUIDs) {
+        const double dElapsed = getCacheLastAccess(sUID);
+        if(!std::isnan(dElapsed) && dElapsed > dTimeout_seconds)
+            GeoRegionTreeCacher::releaseGeoRegionTree(sUID);
+    }
 }
 
 void testRandomBuildAndQueries(const std::string& sDataRootPath) {

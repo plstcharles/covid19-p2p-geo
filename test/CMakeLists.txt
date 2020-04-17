@@ -4,7 +4,7 @@ add_executable(covid19_p2p_geo_tests)
 target_sources(
     covid19_p2p_geo_tests
         PUBLIC
-            "src/main.cpp"
+            "src/test_api.cpp"
 )
 
 target_link_libraries(

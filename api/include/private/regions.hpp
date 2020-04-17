@@ -94,3 +94,15 @@ GeoRegionPtr fetchRegion(
     std::unique_ptr<geos::geom::Point> pPoint(pGeomFact->createPoint(oTargetCoords));
     return pTree->findGeoRegion(pPoint); // will return nullptr if no hit is found
 }
+
+/// returns the duration (in seconds) since the last access of a specific region's cache
+double getCacheLastAccess(const SessionNameType& sUID) {
+    if(isDisseminationArea(sUID))
+        return getCacheLastAccess(getParentUID(sUID));
+    const GeoRegionTreePtr pTree = GeoRegionTreeCacher::getGeoRegionTree(sUID);
+    if(!pTree)
+        return std::numeric_limits<double>::quiet_NaN();
+    const std::chrono::duration<double> tTimeDiff =
+            std::chrono::high_resolution_clock::now() - pTree->getLastAccessedTimestamp();
+    return tTimeDiff.count();
+}

@@ -1,7 +1,7 @@
 
 #include "api.hpp"
 
-#include "regions.hpp"
+#include "private/regions.hpp"
 
 std::map<SessionNameType, GeoRegionTreePtr> GeoRegionTreeCacher::s_mGeoTrees;
 std::mutex GeoRegionTreeCacher::s_oGeoTreeMapMutex;

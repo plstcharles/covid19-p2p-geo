@@ -16,7 +16,7 @@
 #include <geos/operation/linemerge/LineMerger.h>
 #include <geos/constants.h>
 
-#include "generic_utils.hpp"
+#include "private/generic_utils.hpp"
 
 struct GeoRegionStats;
 struct GeoRegionTree;

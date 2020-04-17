@@ -1,6 +1,6 @@
 #pragma once
 
-#include "hdf5_utils.hpp"
+#include "private/hdf5_utils.hpp"
 
 /// creates a high-level region map (based on census division envelopes) for spatial querying
 GeoRegionMap createHighLevelRegionMap(const std::string& sHDF5FilePath) {

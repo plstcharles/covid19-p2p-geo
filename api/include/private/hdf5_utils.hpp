@@ -1,7 +1,7 @@
 #pragma once
 
 #include "H5Cpp.h"
-#include "geo_utils.hpp"
+#include "private/geo_utils.hpp"
 
 /// reads a uint64_t attribute value specified by name from an HDF5 object
 template<typename TOut, typename TDataset>

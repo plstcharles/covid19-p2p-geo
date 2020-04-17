@@ -5,10 +5,10 @@ target_sources(
     covid19_p2p_geo_api
         PRIVATE
             "src/api.cpp"
-            "include/generic_utils.hpp"
-            "include/geo_utils.hpp"
-            "include/hdf5_utils.hpp"
-            "include/regions.hpp"
+            "include/private/generic_utils.hpp"
+            "include/private/geo_utils.hpp"
+            "include/private/hdf5_utils.hpp"
+            "include/private/regions.hpp"
         PUBLIC
             "include/api.hpp"
 )

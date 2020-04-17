@@ -68,7 +68,7 @@ target_link_libraries(
 
 add_executable(
     covid19_p2p_geo_tester
-        "apps/src/tester.cpp"
+        "apps/src/random_tester.cpp"
 )
 add_dependencies(
     covid19_p2p_geo_tester

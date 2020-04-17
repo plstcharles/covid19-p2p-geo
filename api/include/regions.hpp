@@ -1,310 +1,94 @@
 #pragma once
 
-#include "generic_utils.hpp"
-#include "geos_utils.hpp"
+#include "hdf5_utils.hpp"
 
-
-struct GeoRegionStats;
-struct GeoRegionTree;
-struct GeoRegion;
-
-using Geometry = geos::geom::Geometry::Ptr;
-using GeomEnvelope = geos::geom::Envelope;
-using GeomArray = std::vector<Geometry>;
-
-using GeoRegionUID = uint32_t;
-using GeoRegionPtr = std::shared_ptr<GeoRegion>;
-using GeoRegionUIDArray = std::vector<GeoRegionUID>;
-using GeoRegionArray = std::vector<GeoRegionPtr>;
-using GeoRegionStatsArray = std::vector<GeoRegionStats>;
-using GeoRegionMap = std::map<GeoRegionUID, GeoRegionPtr>;
-using GeoRegionTreePtr = std::shared_ptr<GeoRegionTree>;
-
-using SessionNameType = std::string;
-
-#define AUTO_SESSION_NAME std::string()
-
-#define GLOBAL_REGION_UID GeoRegionUID(0u)
-
-
-GeoRegionUID getParentUID(GeoRegionUID nUID) {
-    // we use GEO CODES for provincies/territories, census divisions, and dissemination areas
-    // (this means they can only be 2-digit, 4-digit, or 8-digit)
-    if(nUID < 100u) // we are already at the province/territory level; no parent
-        return GLOBAL_REGION_UID;
-    else if(nUID < 10000000u) { // we are at the census division level; get first two digits
-        assert(nUID >= 1000u && nUID < 10000u); // we should be in the 4-digit range
-        return nUID / 100u;
-    }
-    else { // we are at the dissemination area level; get first four digits
-        assert(nUID > 10000000u && nUID < 100000000u);
-        return nUID / 10000u;
-    }
-}
-
-template<typename TKey, typename TVal>
-GeoRegionUID getParentUID(const std::pair<TKey, TVal>& oPair) {
-    return getParentUID(oPair.first); // assume first key is UID-related
-}
-
-GeoRegionUID getParentUID(const GeoRegion& oRegion);
-GeoRegionUID getParentUID(const GeoRegionPtr& pRegion);
-
-template<typename TIter>
-GeoRegionUID getParentUID(TIter iBegin, TIter iEnd) {
-    if(iBegin == iEnd)
-        return GLOBAL_REGION_UID;
-    std::set<GeoRegionUID> mParentUIDs;
-    for(; iBegin != iEnd; ++iBegin)
-        mParentUIDs.insert(getParentUID(*iBegin));
-    if(mParentUIDs.size() == 1u)
-        return *mParentUIDs.begin();
-    return getParentUID(mParentUIDs.begin(), mParentUIDs.end());
-}
-
-/// standalone class not merged with 'GeoRegion' to simplify parsing
-struct GeoRegionStats {
-
-    GeoRegionStats():
-            fPopulation(std::numeric_limits<float>::quiet_NaN()),
-            fDwellings(std::numeric_limits<float>::quiet_NaN()),
-            fArea(std::numeric_limits<float>::quiet_NaN()) {}
-
-    GeoRegionStats(float fPopulation_, float fDwellings_, float fArea_):
-            fPopulation(fPopulation_),
-            fDwellings(fDwellings_),
-            fArea(fArea_) {}
-
-    explicit GeoRegionStats(const float* afStatsArray):
-            fPopulation(afStatsArray[0]),
-            fDwellings(afStatsArray[1]),
-            fArea(afStatsArray[2]) {}
-
-    static constexpr size_t s_nExpectedStatCount = 3u;
-    static std::array<std::string, s_nExpectedStatCount> getExpectedStatNames() {
-        return std::array<std::string, s_nExpectedStatCount>{"pop", "dwellings", "area"};
-    }
-
-    float fPopulation;
-    float fDwellings;
-    float fArea;
-};
-
-struct GeoRegion {
-
-    GeoRegion():
-            nUID(0), nParentUID(0), oEnvelope(), oStats(), pGeometry(nullptr) {}
-
-    GeoRegion(
-            const GeoRegionStats& oStats_, GeoRegionUID nUID_, const GeomEnvelope& oEnvelope_,
-            Geometry&& pGeometry_ = nullptr):
-            nUID(nUID_), nParentUID(getParentUID(nUID_)), oEnvelope(oEnvelope_), oStats(oStats_),
-            pGeometry(std::move(pGeometry_)) {}
-
-    const GeoRegionUID nUID, nParentUID;
-    const GeomEnvelope oEnvelope;
-    const GeoRegionStats oStats;
-    Geometry pGeometry;
-};
-
-GeoRegionUID getParentUID(const GeoRegion& oRegion) {
-    return getParentUID(oRegion.nUID);
-}
-
-GeoRegionUID getParentUID(const GeoRegionPtr& pRegion) {
-    if(!pRegion)
-        return GLOBAL_REGION_UID;
-    return getParentUID(pRegion->nUID);
-}
-
-GeoRegionMap getGeoRegionMapFromArray(const GeoRegionArray& vRegions) {
+/// Creates a high-level region map (based on census division envelopes) for spatial querying
+GeoRegionMap createHighLevelRegionMap(const std::string& sHDF5FilePath) {
+    const H5::H5File oH5Archive(sHDF5FilePath, H5F_ACC_RDONLY);
+    const hsize_t nCDCount = readHDF5Int64Attrib<hsize_t>(oH5Archive, "cd_count");
+    assert(nCDCount > 0);
+    const GeoRegionStatsArray vGeoRegionStats = readHDF5GeoRegionStats(oH5Archive, "cd_stats");
+    assert(nCDCount == vGeoRegionStats.size());
+    const GeoRegionUIDArray vnUIDs = readHDF5GeoRegionUIDs(oH5Archive, "cduid");
+    assert(nCDCount == vnUIDs.size());
+    const std::vector<GeomEnvelope> vEnvelopes = readHDF5GeomEnvelopes(oH5Archive, "cd_envelope");
+    assert(nCDCount == vEnvelopes.size());
+    // note: high-level geometries don't come with actual geometries, just envelopes
     GeoRegionMap mRegions;
-    for(const auto& pRegion : vRegions)
-        mRegions[pRegion->nUID] = pRegion;
+    for(size_t nCDIdx = 0u; nCDIdx < nCDCount; ++nCDIdx) {
+        auto pRegion = std::make_shared<GeoRegion>(vGeoRegionStats[nCDIdx], vnUIDs[nCDIdx], vEnvelopes[nCDIdx]);
+        mRegions.insert(std::make_pair(vnUIDs[nCDIdx], pRegion));
+    }
     return mRegions;
 }
 
-Geometry getGeomArrayEnvelope(const GeomArray& vGeoms) {
+/// Creates a region map (based on dissemination area geometries) for spatial querying
+GeoRegionMap createDisseminationAreaMap(const std::string& sHDF5FilePath) {
+    const H5::H5File oH5Archive(sHDF5FilePath, H5F_ACC_RDONLY);
+    const hsize_t nDACount = readHDF5Int64Attrib<hsize_t>(oH5Archive, "da_count");
+    assert(nDACount > 0);
+    const GeoRegionStatsArray vGeoRegionStats = readHDF5GeoRegionStats(oH5Archive, "da_stats");
+    assert(nDACount == vGeoRegionStats.size());
+    const GeoRegionUIDArray vnUIDs = readHDF5GeoRegionUIDs(oH5Archive, "dauid");
+    assert(nDACount == vnUIDs.size());
+    std::vector<Geometry> vDAGeometries = readHDF5DAWKBGeometries(oH5Archive);
+    assert(nDACount == vDAGeometries.size());
+    GeoRegionMap mRegions;
+    for(size_t nDAIdx = 0u; nDAIdx < nDACount; ++nDAIdx) {
+        const GeomEnvelope* pRegionEnvelope = vDAGeometries[nDAIdx]->getEnvelopeInternal();
+        auto pRegion = std::make_shared<GeoRegion>(
+                vGeoRegionStats[nDAIdx], vnUIDs[nDAIdx], *pRegionEnvelope, std::move(vDAGeometries[nDAIdx]));
+        mRegions.insert(std::make_pair(vnUIDs[nDAIdx], pRegion));
+    }
+    return mRegions;
+}
+
+/// Prepares the high-level region tree (based on census division envelopes)
+GeoRegionTreePtr prepareHighLevelRegionTree(const std::string& sDataRootPath) {
+    GeoRegionTreePtr pHighLevelTree = GeoRegionTreeCacher::getGeoRegionTree(GLOBAL_REGION_STR);
+    if(!pHighLevelTree) {
+        const std::string sHighLevelHDF5FilePath = sDataRootPath + "/cd.hdf5";
+        const GeoRegionMap& mHighLevelRegions = createHighLevelRegionMap(sHighLevelHDF5FilePath);
+        std::pair<SessionNameType, GeoRegionTreePtr> oHighLevelTree =
+                GeoRegionTreeCacher::createGeoRegionTree(mHighLevelRegions);
+        assert(oHighLevelTree.first == GLOBAL_REGION_STR); // top parent should be global region
+        pHighLevelTree = oHighLevelTree.second;
+    }
+    return pHighLevelTree;
+}
+
+/// Prepares a region tree (based on dissemination area geometries)
+GeoRegionTreePtr prepareRegionTree(const std::string& sUID, const std::string& sDataRootPath) {
+    assert(sUID.size() == 4u); // should always be querying census divisions
+    GeoRegionTreePtr pTree = GeoRegionTreeCacher::getGeoRegionTree(sUID);
+    if(!pTree) {
+        const std::string sHDF5FilePath = sDataRootPath + "/divisions/" + sUID +".hdf5";
+        const GeoRegionMap& mRegions = createDisseminationAreaMap(sHDF5FilePath);
+        std::pair<SessionNameType, GeoRegionTreePtr> oTree =
+                GeoRegionTreeCacher::createGeoRegionTree(mRegions);
+        assert(oTree.first == sUID); // should provide queried key, always
+        pTree = oTree.second;
+    }
+    return pTree;
+}
+
+std::vector<GeoRegionPtr> fetchRegionHits(
+        double dLatitude,
+        double dLongitude,
+        GeoRegionTreePtr pTree) {
     geos::geom::GeometryFactory::Ptr pGeomFact = geos::geom::GeometryFactory::create();
-    GeomArray vGeomClones;
-    vGeomClones.reserve(vGeoms.size());
-    for(const auto& oGeom : vGeoms)
-        vGeomClones.push_back(oGeom->clone());
-    geos::geom::GeometryCollection::Ptr pGeomCollection =
-            pGeomFact->createGeometryCollection(std::move(vGeomClones));
-    return pGeomCollection->getEnvelope();
+    const geos::geom::Coordinate oTargetCoords(dLongitude, dLatitude);
+    std::unique_ptr<geos::geom::Point> pPoint(pGeomFact->createPoint(oTargetCoords));
+    const geos::geom::Envelope* pGeomEnv = pPoint->getEnvelopeInternal();
+    return pTree->findGeoRegionHits(pGeomEnv);
 }
 
-/// Will use envelope if no actual geometry is available
-Geometry getGeomArrayEnvelope(const GeoRegionArray& vRegions) {
+GeoRegionPtr fetchRegion(
+        double dLatitude,
+        double dLongitude,
+        GeoRegionTreePtr pTree) {
     geos::geom::GeometryFactory::Ptr pGeomFact = geos::geom::GeometryFactory::create();
-    GeomArray vGeomClones;
-    vGeomClones.reserve(vRegions.size());
-    for(const auto& pRegion : vRegions) {
-        if(pRegion->pGeometry)
-            vGeomClones.push_back(pRegion->pGeometry->clone());
-        else
-            vGeomClones.push_back(pGeomFact->toGeometry(&pRegion->oEnvelope));
-    }
-    geos::geom::GeometryCollection::Ptr pGeomCollection =
-            pGeomFact->createGeometryCollection(std::move(vGeomClones));
-    return pGeomCollection->getEnvelope();
+    const geos::geom::Coordinate oTargetCoords(dLongitude, dLatitude);
+    std::unique_ptr<geos::geom::Point> pPoint(pGeomFact->createPoint(oTargetCoords));
+    return pTree->findGeoRegion(pPoint);
 }
-
-Geometry getGeomArrayEnvelope(const GeoRegionMap& mRegions) {
-    return getGeomArrayEnvelope(getValArrayFromMap(mRegions));
-}
-
-struct GeoRegionTree {
-
-    explicit GeoRegionTree(
-            const GeoRegionArray& vRegions,
-            size_t nDefaultNodeCapacity = 10u):
-            tBuildTimestamp(std::chrono::high_resolution_clock::now()),
-            mRegions(getGeoRegionMapFromArray(vRegions)),
-            nParentUID(getParentUID(vRegions.begin(), vRegions.end())),
-            pEnvelope(getGeomArrayEnvelope(vRegions)),
-            oTree(nDefaultNodeCapacity) {
-        buildTree();
-    }
-
-    explicit GeoRegionTree(
-            const GeoRegionMap& mRegions_,
-            size_t nDefaultNodeCapacity = 10u):
-            tBuildTimestamp(std::chrono::high_resolution_clock::now()),
-            mRegions(mRegions_),
-            nParentUID(getParentUID(mRegions.begin(), mRegions.end())),
-            pEnvelope(getGeomArrayEnvelope(mRegions)), oTree(nDefaultNodeCapacity) {
-        buildTree();
-    }
-
-    template<typename TGeometry>
-    GeoRegionPtr findGeoRegion(const std::unique_ptr<TGeometry>& pGeometry) {
-        return findGeoRegion(pGeometry.get());
-    }
-
-    template<typename TGeometry>
-    GeoRegionPtr findGeoRegion(const std::shared_ptr<TGeometry>& pGeometry) {
-        return findGeoRegion(pGeometry.get());
-    }
-
-    template<typename TGeometry>
-    GeoRegionPtr findGeoRegion(const TGeometry* pGeometry) {
-        // note: output pointer will remain valid as long as tree is valid
-        const geos::geom::Envelope* pGeomEnv = pGeometry->getEnvelopeInternal();
-        const std::vector<GeoRegionPtr>& vQueryHits = findGeoRegionHits(pGeomEnv);
-        for(GeoRegionPtr pHitRegion : vQueryHits) {
-            if(pHitRegion->pGeometry) {
-                if(pHitRegion->pGeometry->contains(pGeometry))
-                    return pHitRegion;
-            }
-            else {
-                // will always fall back to envelope checks if full geometry is not available
-                if(pHitRegion->oEnvelope.contains(pGeomEnv))
-                    return pHitRegion;
-            }
-        }
-        // if we did not hit a region, the point is assumed to be "out of bounds"
-        return nullptr;
-    }
-
-    /// Returns the first-hit tree region that fully contains the query envelope
-    std::vector<GeoRegionPtr> findGeoRegionHits(const geos::geom::Envelope* pQueryEnv) {
-        // note: output pointers will remain valid as long as tree is valid
-        // abstract tree query func is not constant, better use a mutex for thread safety...
-        std::vector<void*> vQueryHits;
-        {
-            const std::lock_guard<std::mutex> oLock(m_oTreeMutex);
-            oTree.query(pQueryEnv, vQueryHits);
-        }
-        std::vector<GeoRegionPtr> vHitRegions;
-        vHitRegions.reserve(vQueryHits.size());
-        for(const auto& pHitData : vQueryHits)
-            vHitRegions.push_back(*static_cast<GeoRegionPtr*>(pHitData));
-        return vHitRegions;
-    }
-
-    const std::chrono::high_resolution_clock::time_point tBuildTimestamp;
-    const GeoRegionMap mRegions;
-    const GeoRegionUID nParentUID;
-    const Geometry pEnvelope;
-
-private:
-
-    void buildTree() {
-        // calling this function mutliple times is undefined behavior
-        assert(!mRegions.empty());
-        for(auto& pRegionPair : mRegions)
-            oTree.insert(&pRegionPair.second->oEnvelope, (void*)(&pRegionPair.second));
-        oTree.build();
-    }
-
-    geos::index::strtree::STRtree oTree;
-    std::mutex m_oTreeMutex;
-
-};
-
-struct GeoRegionTreeCacher {
-
-    /// creating a tree with an already-in-use session ID will overwrite that session
-    /// if using the automatic session name deduction, the parent region ID will be deducted
-    /// automatic session name deduction + insertion might overwrite an existing parent tree
-    static std::pair<SessionNameType, GeoRegionTreePtr> createGeoRegionTree(
-            const GeoRegionArray& vRegions,
-            SessionNameType oSessionName = AUTO_SESSION_NAME,
-            size_t nDefaultNodeCapacity = 10u) {
-        assert(!vRegions.empty());
-        if(oSessionName == AUTO_SESSION_NAME)
-            oSessionName = suggestSessionName(vRegions);
-        auto pRegionTree = std::make_shared<GeoRegionTree>(
-                vRegions, nDefaultNodeCapacity);
-        const std::lock_guard<std::mutex> oLock(s_oGeoTreeMapMutex);
-        return *s_mGeoTrees.insert(std::make_pair(oSessionName, pRegionTree)).first;
-    }
-
-    static std::pair<SessionNameType, GeoRegionTreePtr> createGeoRegionTree(
-            const GeoRegionMap& mRegions,
-            SessionNameType oSessionName = AUTO_SESSION_NAME,
-            size_t nDefaultNodeCapacity = 10u) {
-        assert(!mRegions.empty());
-        if(oSessionName == AUTO_SESSION_NAME)
-            oSessionName = suggestSessionName(mRegions);
-        auto pRegionTree = std::make_shared<GeoRegionTree>(
-                mRegions, nDefaultNodeCapacity);
-        const std::lock_guard<std::mutex> oLock(s_oGeoTreeMapMutex);
-        return *s_mGeoTrees.insert(std::make_pair(oSessionName, pRegionTree)).first;
-    }
-
-    static GeoRegionTreePtr getGeoRegionTree(const SessionNameType& sSessionName) {
-        assert(sSessionName != AUTO_SESSION_NAME); // not supported here
-        const std::lock_guard<std::mutex> oLock(s_oGeoTreeMapMutex);
-        auto iMatchedGeoRegionTree = s_mGeoTrees.find(sSessionName);
-        if(iMatchedGeoRegionTree == s_mGeoTrees.end())
-            return GeoRegionTreePtr();
-        return iMatchedGeoRegionTree->second;
-    }
-
-    static SessionNameType suggestSessionName(const GeoRegionMap& mRegions) {
-        const GeoRegionUIDArray vGeoRegionUIds = getKeyArrayFromMap(mRegions);
-        const GeoRegionUID nID = getParentUID(mRegions.begin(), mRegions.end());
-        return std::to_string(nID);
-    }
-
-    static SessionNameType suggestSessionName(const GeoRegionArray& vRegions) {
-        GeoRegionUIDArray vGeoRegionUIDs;
-        vGeoRegionUIDs.reserve(vRegions.size());
-        for(const auto& pRegion : vRegions)
-            vGeoRegionUIDs.push_back(pRegion->nUID);
-        const GeoRegionUID nID = getParentUID(vRegions.begin(), vRegions.end());
-        return std::to_string(nID);
-    }
-
-private:
-
-    static std::map<SessionNameType, GeoRegionTreePtr> s_mGeoTrees;
-    static std::mutex s_oGeoTreeMapMutex;
-
-};
-
-std::map<SessionNameType, GeoRegionTreePtr> GeoRegionTreeCacher::s_mGeoTrees;
-std::mutex GeoRegionTreeCacher::s_oGeoTreeMapMutex;

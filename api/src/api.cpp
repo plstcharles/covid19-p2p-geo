@@ -1,62 +1,44 @@
 
 #include "api.hpp"
 
-#include "hdf5_utils.hpp"
+#include "regions.hpp"
 
-/// Creates a high-level region map (based on census division envelopes) for spatial querying
-GeoRegionMap createHighLevelRegionMap(const std::string& sHDF5FilePath) {
-    const H5::H5File oH5Archive(sHDF5FilePath, H5F_ACC_RDONLY);
-    const hsize_t nCDCount = readHDF5Int64Attrib<hsize_t>(oH5Archive, "cd_count");
-    assert(nCDCount > 0);
-    const GeoRegionStatsArray vGeoRegionStats = readHDF5GeoRegionStats(oH5Archive, "cd_stats");
-    assert(nCDCount == vGeoRegionStats.size());
-    const GeoRegionUIDArray vnUIDs = readHDF5GeoRegionUIDs(oH5Archive, "cduid");
-    assert(nCDCount == vnUIDs.size());
-    const std::vector<GeomEnvelope> vEnvelopes = readHDF5GeomEnvelopes(oH5Archive, "cd_envelope");
-    assert(nCDCount == vEnvelopes.size());
-    // note: high-level geometries don't come with actual geometries, just envelopes
-    GeoRegionMap mRegions;
-    for(size_t nCDIdx = 0u; nCDIdx < nCDCount; ++nCDIdx) {
-        auto pRegion = std::make_shared<GeoRegion>(vGeoRegionStats[nCDIdx], vnUIDs[nCDIdx], vEnvelopes[nCDIdx]);
-        mRegions.insert(std::make_pair(vnUIDs[nCDIdx], pRegion));
+void prepareRegionsNear(double dLatitude, double dLongitude, const std::string& sDataRootPath) {
+    GeoRegionTreePtr pHighLevelTree = prepareHighLevelRegionTree(sDataRootPath);
+    assert(pHighLevelTree);
+    const std::vector<GeoRegionPtr>& vHits = fetchRegionHits(dLatitude, dLongitude, pHighLevelTree);
+    for(GeoRegionPtr pHitRegion : vHits) {
+        assert(pHitRegion && pHitRegion->nParentUID == GLOBAL_REGION_UID);
+        const std::string& sTargetSubRegion = std::to_string(pHitRegion->nUID);
+        prepareRegionTree(sTargetSubRegion, sDataRootPath);
     }
-    return mRegions;
 }
 
-/// Creates a region map (based on dissemination area geometries) for spatial querying
-GeoRegionMap createDisseminationAreaMap(const std::string& sHDF5FilePath) {
-    const H5::H5File oH5Archive(sHDF5FilePath, H5F_ACC_RDONLY);
-    const hsize_t nDACount = readHDF5Int64Attrib<hsize_t>(oH5Archive, "da_count");
-    assert(nDACount > 0);
-    const GeoRegionStatsArray vGeoRegionStats = readHDF5GeoRegionStats(oH5Archive, "da_stats");
-    assert(nDACount == vGeoRegionStats.size());
-    const GeoRegionUIDArray vnUIDs = readHDF5GeoRegionUIDs(oH5Archive, "dauid");
-    assert(nDACount == vnUIDs.size());
-    std::vector<Geometry> vDAGeometries = readHDF5DAWKBGeometries(oH5Archive);
-    assert(nDACount == vDAGeometries.size());
-    GeoRegionMap mRegions;
-    for(size_t nDAIdx = 0u; nDAIdx < nDACount; ++nDAIdx) {
-        const GeomEnvelope* pRegionEnvelope = vDAGeometries[nDAIdx]->getEnvelopeInternal();
-        auto pRegion = std::make_shared<GeoRegion>(
-                vGeoRegionStats[nDAIdx], vnUIDs[nDAIdx], *pRegionEnvelope, std::move(vDAGeometries[nDAIdx]));
-        mRegions.insert(std::make_pair(vnUIDs[nDAIdx], pRegion));
+std::string fetchRegionsUID(double dLatitude, double dLongitude, const std::string& sDataRootPath) {
+    GeoRegionTreePtr pHighLevelTree = prepareHighLevelRegionTree(sDataRootPath);
+    assert(pHighLevelTree);
+    const std::vector<GeoRegionPtr>& vHits = fetchRegionHits(dLatitude, dLongitude, pHighLevelTree);
+    for(GeoRegionPtr pHitRegion : vHits) {
+        assert(pHitRegion && pHitRegion->nParentUID == GLOBAL_REGION_UID);
+        const std::string& sTargetSubRegion = std::to_string(pHitRegion->nUID);
+        GeoRegionTreePtr pRegionTree = prepareRegionTree(sTargetSubRegion, sDataRootPath);
+        assert(pRegionTree && pRegionTree->nParentUID != GLOBAL_REGION_UID);
+        GeoRegionPtr pResult = fetchRegion(dLatitude, dLongitude, pRegionTree);
+        if(pResult)
+            return std::to_string(pResult->nUID);
     }
-    return mRegions;
+    return GLOBAL_REGION_STR; // no clean intersection found, return global ID (0)
 }
 
 void testRandomBuildAndQueries(const std::string& sDataRootPath) {
-    const std::string sHighLevelHDF5FilePath = sDataRootPath + "/cd.hdf5";
+    GeoRegionTreePtr pHighLevelTree = prepareHighLevelRegionTree(sDataRootPath);
     const std::string sHDF5DivisonsFolderPath = sDataRootPath + "/divisions/";
-    const GeoRegionMap& mHighLevelRegions = createHighLevelRegionMap(sHighLevelHDF5FilePath);
-    std::pair<SessionNameType, GeoRegionTreePtr> oHighLevelTree =
-            GeoRegionTreeCacher::createGeoRegionTree(mHighLevelRegions);
-    assert(oHighLevelTree.first == "0"); // high-level stuff parent should be global region (0)
     const size_t nRandomBuildAndQueryCount = 1000u;
     std::vector<double> vdBuildTotalTime_msec, vdQueryTotalTime_msec;
     for(size_t nTrialIdx = 0u; nTrialIdx < nRandomBuildAndQueryCount; ++nTrialIdx) {
         // pick a random census division for the test
-        const size_t nTargetRegionIdx = (size_t)std::rand() % mHighLevelRegions.size();
-        auto pRegionIter = mHighLevelRegions.begin();
+        const size_t nTargetRegionIdx = (size_t)std::rand() % pHighLevelTree->mRegions.size();
+        auto pRegionIter = pHighLevelTree->mRegions.begin();
         std::advance(pRegionIter, nTargetRegionIdx);
         const GeoRegionPtr pTargetRegion = pRegionIter->second;
         const GeoRegionUID nTargetCDUID = pTargetRegion->nUID;
@@ -85,7 +67,6 @@ void testRandomBuildAndQueries(const std::string& sDataRootPath) {
             const std::chrono::duration<double, std::milli> tBuildTime =
                     tPostBuildTimestamp - tPreBuildTimestamp;
             vdBuildTotalTime_msec.push_back(tBuildTime.count());
-
         }
         assert(pSubTree);
         // within the census division region tree, pick a random dissemination area as a query

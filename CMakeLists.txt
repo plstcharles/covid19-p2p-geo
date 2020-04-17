@@ -44,7 +44,7 @@ add_library(
             "api/src/api.cpp"
             "api/include/api.hpp"
             "api/include/generic_utils.hpp"
-            "api/include/geos_utils.hpp"
+            "api/include/geo_utils.hpp"
             "api/include/hdf5_utils.hpp"
             "api/include/regions.hpp"
 )

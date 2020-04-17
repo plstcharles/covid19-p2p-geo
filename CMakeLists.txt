@@ -44,61 +44,17 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 
 add_subdirectory(3rdparty)
 
-add_definitions(-Wfatal-errors)
+add_definitions(-Wfatal-errors -Werror -Wall)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fprofile-arcs -ftest-coverage")
 endif()
 
-add_library(covid19_p2p_geo_api STATIC)
-target_sources(
-    covid19_p2p_geo_api
-        PRIVATE
-            "api/src/api.cpp"
-            "api/include/generic_utils.hpp"
-            "api/include/geo_utils.hpp"
-            "api/include/hdf5_utils.hpp"
-            "api/include/regions.hpp"
-        PUBLIC
-            "api/include/api.hpp"
-)
-add_dependencies(
-    covid19_p2p_geo_api
-        hdf5_local
-)
-target_include_directories(
-    covid19_p2p_geo_api
-        PUBLIC
-            "${CMAKE_SOURCE_DIR}/api/include"
-            "${_hdf5_include_dirs}"
-)
-target_link_libraries(
-    covid19_p2p_geo_api
-        PRIVATE
-            geos
-            "$<BUILD_INTERFACE:${_hdf5_libs}>"
-            lz4
-)
+add_subdirectory(api)
+add_subdirectory(apps)
 
-add_executable(
-    covid19_p2p_geo_tester
-        "apps/src/random_tester.cpp"
-)
-add_dependencies(
-    covid19_p2p_geo_tester
-        hdf5_local
-)
-target_include_directories(
-    covid19_p2p_geo_tester
-        PUBLIC
-        "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/api/include>"
-        "$<BUILD_INTERFACE:${_hdf5_include_dirs}>"
-)
-target_link_libraries(
-    covid19_p2p_geo_tester
-        PUBLIC
-            geos
-            "$<BUILD_INTERFACE:${_hdf5_libs}>"
-            lz4
-            covid19_p2p_geo_api
-)
+option(BUILD_TESTS "Enable tests for the API" ON)
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+endif()

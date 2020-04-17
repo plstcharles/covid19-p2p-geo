@@ -1,3 +1,5 @@
 #pragma once
 
-void print_debug_info();
+#include <string>
+
+void testRandomBuildAndQueries(const std::string& sDataRootPath);

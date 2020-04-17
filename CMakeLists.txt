@@ -43,6 +43,10 @@ add_library(
         STATIC
             "api/src/api.cpp"
             "api/include/api.hpp"
+            "api/include/generic_utils.hpp"
+            "api/include/geos_utils.hpp"
+            "api/include/hdf5_utils.hpp"
+            "api/include/regions.hpp"
 )
 add_dependencies(
     covid19_p2p_geo_api

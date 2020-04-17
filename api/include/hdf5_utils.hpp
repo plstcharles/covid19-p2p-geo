@@ -3,6 +3,7 @@
 #include "H5Cpp.h"
 #include "geo_utils.hpp"
 
+/// reads a uint64_t attribute value specified by name from an HDF5 object
 template<typename TOut, typename TDataset>
 TOut readHDF5Int64Attrib(const TDataset& oH5, const std::string& sAttribName) {
     const H5::Attribute oCountAttrib = oH5.openAttribute(sAttribName);
@@ -13,6 +14,7 @@ TOut readHDF5Int64Attrib(const TDataset& oH5, const std::string& sAttribName) {
     return (TOut)nCount_int64;
 }
 
+/// reads a vector of strings attribute specified by name from an HDF5 object
 template<typename TDataset>
 std::vector<std::string> readHDF5StrVecAttrib(const TDataset& oH5, const std::string& sAttribName) {
     const H5::Attribute oStrVecAttrib = oH5.openAttribute(sAttribName);
@@ -32,6 +34,7 @@ std::vector<std::string> readHDF5StrVecAttrib(const TDataset& oH5, const std::st
     return vOutputStrings;
 }
 
+/// reads a vector of geometries encoded as WKB strings inside a buffer
 GeomArray readWKBGeometries(uint8_t* aBuffer, size_t nBufferSize, size_t nGeomCount) {
     GeomArray vResult;
     vResult.reserve(nGeomCount);
@@ -43,6 +46,7 @@ GeomArray readWKBGeometries(uint8_t* aBuffer, size_t nBufferSize, size_t nGeomCo
     return vResult;
 }
 
+/// reads a vector of dissemination area geometries from an HDF5 object
 GeomArray readHDF5DAWKBGeometries(const H5::H5File& oH5Archive) {
     const hsize_t nDACount = readHDF5Int64Attrib<hsize_t>(oH5Archive, "da_count");
     const H5::DataSet oWKBDataset = oH5Archive.openDataSet("da_wkb");
@@ -85,6 +89,7 @@ GeomArray readHDF5DAWKBGeometries(const H5::H5File& oH5Archive) {
     return readWKBGeometries(abWKBBuffer.get(), nWKBByteCount, nDACount);
 }
 
+/// reads a vector of geographic area statistics with a specified name from an HDF5 object
 template<typename TDataset>
 GeoRegionStatsArray readHDF5GeoRegionStats(const TDataset& oH5, const std::string& sDatasetName) {
     const std::vector<std::string> vStatNames = readHDF5StrVecAttrib(oH5, "stat_cols");
@@ -110,6 +115,7 @@ GeoRegionStatsArray readHDF5GeoRegionStats(const TDataset& oH5, const std::strin
     return vGeoRegionStats;
 }
 
+/// reads a vector of geographic unique identifiers (UIDs) with a specified name from an HDF5 object
 template<typename TDataset>
 GeoRegionUIDArray readHDF5GeoRegionUIDs(const TDataset& oH5, const std::string& sDatasetName) {
     const H5::DataSet oDataset = oH5.openDataSet(sDatasetName);
@@ -125,6 +131,7 @@ GeoRegionUIDArray readHDF5GeoRegionUIDs(const TDataset& oH5, const std::string& 
     return vnUIDs;
 }
 
+/// reads a vector of geographic envelopes with a specified name from an HDF5 object
 template<typename TDataset>
 std::vector<GeomEnvelope> readHDF5GeomEnvelopes(const TDataset& oH5, const std::string& sDatasetName) {
     const H5::DataSet oDataset = oH5.openDataSet(sDatasetName);

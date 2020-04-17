@@ -1,3 +1,6 @@
+
+/// contains generic C++ utility functions/defines
+
 #pragma once
 
 #include <algorithm>

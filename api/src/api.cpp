@@ -3,6 +3,9 @@
 
 #include "regions.hpp"
 
+std::map<SessionNameType, GeoRegionTreePtr> GeoRegionTreeCacher::s_mGeoTrees;
+std::mutex GeoRegionTreeCacher::s_oGeoTreeMapMutex;
+
 void prepareRegionsNear(double dLatitude, double dLongitude, const std::string& sDataRootPath) {
     GeoRegionTreePtr pHighLevelTree = prepareHighLevelRegionTree(sDataRootPath);
     assert(pHighLevelTree);

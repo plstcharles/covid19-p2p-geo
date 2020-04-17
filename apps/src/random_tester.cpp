@@ -1,4 +1,6 @@
 
+/// dummy testing app that will run random region tree builds & queries via the API
+
 #include "api.hpp"
 
 int main(int /*argc*/, char* argv[]) {

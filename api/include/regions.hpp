@@ -2,7 +2,7 @@
 
 #include "hdf5_utils.hpp"
 
-/// Creates a high-level region map (based on census division envelopes) for spatial querying
+/// creates a high-level region map (based on census division envelopes) for spatial querying
 GeoRegionMap createHighLevelRegionMap(const std::string& sHDF5FilePath) {
     const H5::H5File oH5Archive(sHDF5FilePath, H5F_ACC_RDONLY);
     const hsize_t nCDCount = readHDF5Int64Attrib<hsize_t>(oH5Archive, "cd_count");
@@ -22,7 +22,7 @@ GeoRegionMap createHighLevelRegionMap(const std::string& sHDF5FilePath) {
     return mRegions;
 }
 
-/// Creates a region map (based on dissemination area geometries) for spatial querying
+/// creates a region map (based on dissemination area geometries) for spatial querying
 GeoRegionMap createDisseminationAreaMap(const std::string& sHDF5FilePath) {
     const H5::H5File oH5Archive(sHDF5FilePath, H5F_ACC_RDONLY);
     const hsize_t nDACount = readHDF5Int64Attrib<hsize_t>(oH5Archive, "da_count");
@@ -43,7 +43,7 @@ GeoRegionMap createDisseminationAreaMap(const std::string& sHDF5FilePath) {
     return mRegions;
 }
 
-/// Prepares the high-level region tree (based on census division envelopes)
+/// prepares the high-level region tree (based on census division envelopes)
 GeoRegionTreePtr prepareHighLevelRegionTree(const std::string& sDataRootPath) {
     GeoRegionTreePtr pHighLevelTree = GeoRegionTreeCacher::getGeoRegionTree(GLOBAL_REGION_STR);
     if(!pHighLevelTree) {
@@ -57,7 +57,7 @@ GeoRegionTreePtr prepareHighLevelRegionTree(const std::string& sDataRootPath) {
     return pHighLevelTree;
 }
 
-/// Prepares a region tree (based on dissemination area geometries)
+/// prepares a region tree (based on dissemination area geometries)
 GeoRegionTreePtr prepareRegionTree(const std::string& sUID, const std::string& sDataRootPath) {
     assert(sUID.size() == 4u); // should always be querying census divisions
     GeoRegionTreePtr pTree = GeoRegionTreeCacher::getGeoRegionTree(sUID);
@@ -72,6 +72,7 @@ GeoRegionTreePtr prepareRegionTree(const std::string& sUID, const std::string& s
     return pTree;
 }
 
+/// returns the list of tree regions that intersect the given lat/lon coordinates
 std::vector<GeoRegionPtr> fetchRegionHits(
         double dLatitude,
         double dLongitude,
@@ -83,6 +84,7 @@ std::vector<GeoRegionPtr> fetchRegionHits(
     return pTree->findGeoRegionHits(pGeomEnv);
 }
 
+/// returns the first tree region that intersects the given lat/lon coordinates
 GeoRegionPtr fetchRegion(
         double dLatitude,
         double dLongitude,
@@ -90,5 +92,5 @@ GeoRegionPtr fetchRegion(
     geos::geom::GeometryFactory::Ptr pGeomFact = geos::geom::GeometryFactory::create();
     const geos::geom::Coordinate oTargetCoords(dLongitude, dLatitude);
     std::unique_ptr<geos::geom::Point> pPoint(pGeomFact->createPoint(oTargetCoords));
-    return pTree->findGeoRegion(pPoint);
+    return pTree->findGeoRegion(pPoint); // will return nullptr if no hit is found
 }

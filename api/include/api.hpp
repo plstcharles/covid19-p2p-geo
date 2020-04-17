@@ -2,7 +2,7 @@
 
 #include <string>
 
-// add namespace? @@@
+// add namespace?
 
 /// prepares the region lookup datastructures near the given GPS coordinates
 void prepareRegionsNear(double dLatitude, double dLongitude, const std::string& sDataRootPath);

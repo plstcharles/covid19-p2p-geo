@@ -54,7 +54,26 @@ add_subdirectory(api)
 add_subdirectory(apps)
 
 option(BUILD_TESTS "Enable tests for the API" ON)
+set(DATA_URL "")  # @@@@ TODO ADD FTP DOWNLOAD LINK?
 if(BUILD_TESTS)
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/data/full.hdf5" AND DATA_URL)
+        message(INFO "Could not find preprocessed HDF5 archives in: ${CMAKE_SOURCE_DIR}/data")
+        message(INFO "... these will be downloaded, but they could be created using the 'preproc' module")
+        file(
+            DOWNLOAD
+                "${DATA_URL}"
+                "${CMAKE_SOURCE_DIR}/data/covid19-p2p-geo-data.zip"
+            SHOW_PROGRESS
+            EXPECTED_HASH
+                MD5=642424670be733638579efa429ae15bc
+            TLS_VERIFY
+                ON
+        )
+    else()
+        if(NOT EXISTS "${CMAKE_SOURCE_DIR}/data/full.hdf5")
+            message(WARNING "Will build tests but data seems to be missing; run preproc script first!")
+        endif()
+    endif()
     enable_testing()
     add_subdirectory(test)
 endif()

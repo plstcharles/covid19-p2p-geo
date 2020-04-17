@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <numeric>
 #include <iomanip>

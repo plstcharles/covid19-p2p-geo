@@ -3,6 +3,16 @@
 
 #include "private/regions.hpp"
 
+GeoRegionUID uid::getParentUID(const GeoRegion& oRegion) {
+    return getParentUID(oRegion.nUID);
+}
+
+GeoRegionUID uid::getParentUID(const std::shared_ptr<GeoRegion>& pRegion) {
+    if(!pRegion)
+        return GLOBAL_REGION_UID; // if the region is empty/unavailable, return global ID
+    return getParentUID(pRegion->nUID);
+}
+
 std::map<SessionNameType, GeoRegionTreePtr> GeoRegionTreeCacher::s_mGeoTrees;
 std::mutex GeoRegionTreeCacher::s_oGeoTreeMapMutex;
 

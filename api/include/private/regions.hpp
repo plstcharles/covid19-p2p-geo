@@ -97,8 +97,8 @@ GeoRegionPtr fetchRegion(
 
 /// returns the duration (in seconds) since the last access of a specific region's cache
 double getCacheLastAccess(const SessionNameType& sUID) {
-    if(isDisseminationArea(sUID))
-        return getCacheLastAccess(getParentUID(sUID));
+    if(uid::isDisseminationArea(sUID))
+        return getCacheLastAccess(uid::getParentUID(sUID));
     const GeoRegionTreePtr pTree = GeoRegionTreeCacher::getGeoRegionTree(sUID);
     if(!pTree)
         return std::numeric_limits<double>::quiet_NaN();

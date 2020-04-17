@@ -76,7 +76,8 @@ struct GeoRegion {
     GeoRegion(
             const GeoRegionStats& oStats_, GeoRegionUID nUID_, const GeomEnvelope& oEnvelope_,
             Geometry&& pGeometry_ = nullptr):
-            nUID(nUID_), nParentUID(getParentUID(nUID_)), oEnvelope(oEnvelope_), oStats(oStats_),
+            nUID(nUID_), nParentUID(uid::getParentUID(nUID_)),
+            oEnvelope(oEnvelope_), oStats(oStats_),
             pGeometry(std::move(pGeometry_)) {}
 
     /// the unique identifier (UID) of this geographic region
@@ -141,7 +142,7 @@ struct GeoRegionTree {
             const GeoRegionArray& vRegions,
             size_t nDefaultNodeCapacity = 10u):
             mRegions(getGeoRegionMapFromArray(vRegions)),
-            nParentUID(getParentUID(vRegions.begin(), vRegions.end())),
+            nParentUID(uid::getParentUID(vRegions.begin(), vRegions.end())),
             pEnvelope(getGeomArrayEnvelope(vRegions)),
             tBuildTimestamp(std::chrono::high_resolution_clock::now()),
             tLastAccessTimestamp(tBuildTimestamp),
@@ -154,7 +155,7 @@ struct GeoRegionTree {
             const GeoRegionMap& mRegions_,
             size_t nDefaultNodeCapacity = 10u):
             mRegions(mRegions_),
-            nParentUID(getParentUID(mRegions.begin(), mRegions.end())),
+            nParentUID(uid::getParentUID(mRegions.begin(), mRegions.end())),
             pEnvelope(getGeomArrayEnvelope(mRegions)),
             tBuildTimestamp(std::chrono::high_resolution_clock::now()),
             tLastAccessTimestamp(tBuildTimestamp),
@@ -291,7 +292,7 @@ struct GeoRegionTreeCacher {
     /// returns a proper session name for a set of regions that corresponds to their common parent UID
     static SessionNameType suggestSessionName(const GeoRegionMap& mRegions) {
         const GeoRegionUIDArray vGeoRegionUIds = getKeyArrayFromMap(mRegions);
-        const GeoRegionUID nID = getParentUID(mRegions.begin(), mRegions.end());
+        const GeoRegionUID nID = uid::getParentUID(mRegions.begin(), mRegions.end());
         return std::to_string(nID);
     }
 
@@ -301,7 +302,7 @@ struct GeoRegionTreeCacher {
         vGeoRegionUIDs.reserve(vRegions.size());
         for(const auto& pRegion : vRegions)
             vGeoRegionUIDs.push_back(pRegion->nUID);
-        const GeoRegionUID nID = getParentUID(vRegions.begin(), vRegions.end());
+        const GeoRegionUID nID = uid::getParentUID(vRegions.begin(), vRegions.end());
         return std::to_string(nID);
     }
 

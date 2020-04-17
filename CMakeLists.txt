@@ -36,6 +36,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(3rdparty)
 
+add_definitions(-Wfatal-errors)
+
 add_library(
     covid19_p2p_geo_api
         STATIC

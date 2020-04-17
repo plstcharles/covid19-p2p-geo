@@ -78,7 +78,7 @@ std::vector<GeoRegionPtr> fetchRegionHits(
         double dLongitude,
         GeoRegionTreePtr pTree) {
     geos::geom::GeometryFactory::Ptr pGeomFact = geos::geom::GeometryFactory::create();
-    const geos::geom::Coordinate oTargetCoords(dLongitude, dLatitude);
+    const geos::geom::Coordinate oTargetCoords(dLatitude, dLongitude);
     std::unique_ptr<geos::geom::Point> pPoint(pGeomFact->createPoint(oTargetCoords));
     const geos::geom::Envelope* pGeomEnv = pPoint->getEnvelopeInternal();
     return pTree->findGeoRegionHits(pGeomEnv);
@@ -90,7 +90,7 @@ GeoRegionPtr fetchRegion(
         double dLongitude,
         GeoRegionTreePtr pTree) {
     geos::geom::GeometryFactory::Ptr pGeomFact = geos::geom::GeometryFactory::create();
-    const geos::geom::Coordinate oTargetCoords(dLongitude, dLatitude);
+    const geos::geom::Coordinate oTargetCoords(dLatitude, dLongitude);
     std::unique_ptr<geos::geom::Point> pPoint(pGeomFact->createPoint(oTargetCoords));
     return pTree->findGeoRegion(pPoint); // will return nullptr if no hit is found
 }

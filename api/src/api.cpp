@@ -11,7 +11,7 @@ void prepareRegionsNear(double dLatitude, double dLongitude, const std::string& 
     assert(pHighLevelTree);
     const std::vector<GeoRegionPtr>& vHits = fetchRegionHits(dLatitude, dLongitude, pHighLevelTree);
     for(GeoRegionPtr pHitRegion : vHits) {
-        assert(pHitRegion && pHitRegion->nParentUID == GLOBAL_REGION_UID);
+        assert(pHitRegion);
         const std::string& sTargetSubRegion = std::to_string(pHitRegion->nUID);
         prepareRegionTree(sTargetSubRegion, sDataRootPath);
     }
@@ -22,10 +22,10 @@ std::string fetchRegionUID(double dLatitude, double dLongitude, const std::strin
     assert(pHighLevelTree);
     const std::vector<GeoRegionPtr>& vHits = fetchRegionHits(dLatitude, dLongitude, pHighLevelTree);
     for(GeoRegionPtr pHitRegion : vHits) {
-        assert(pHitRegion && pHitRegion->nParentUID == GLOBAL_REGION_UID);
+        assert(pHitRegion);
         const std::string& sTargetSubRegion = std::to_string(pHitRegion->nUID);
         GeoRegionTreePtr pRegionTree = prepareRegionTree(sTargetSubRegion, sDataRootPath);
-        assert(pRegionTree && pRegionTree->nParentUID != GLOBAL_REGION_UID);
+        assert(pRegionTree && pRegionTree->nParentUID == pHitRegion->nUID);
         GeoRegionPtr pResult = fetchRegion(dLatitude, dLongitude, pRegionTree);
         if(pResult)
             return std::to_string(pResult->nUID);

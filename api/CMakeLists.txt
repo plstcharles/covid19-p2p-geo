@@ -9,6 +9,7 @@ target_sources(
             "include/private/geo_utils.hpp"
             "include/private/hdf5_utils.hpp"
             "include/private/regions.hpp"
+            "include/private/uid_utils.hpp"
         PUBLIC
             "include/api.hpp"
 )

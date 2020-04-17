@@ -16,7 +16,7 @@
 #include <geos/operation/linemerge/LineMerger.h>
 #include <geos/constants.h>
 
-#include "private/generic_utils.hpp"
+#include "private/uid_utils.hpp"
 
 struct GeoRegionStats;
 struct GeoRegionTree;
@@ -26,60 +26,11 @@ using Geometry = geos::geom::Geometry::Ptr;
 using GeomEnvelope = geos::geom::Envelope;
 using GeomArray = std::vector<Geometry>;
 
-using GeoRegionUID = uint32_t;
 using GeoRegionPtr = std::shared_ptr<GeoRegion>;
-using GeoRegionUIDArray = std::vector<GeoRegionUID>;
 using GeoRegionArray = std::vector<GeoRegionPtr>;
 using GeoRegionStatsArray = std::vector<GeoRegionStats>;
 using GeoRegionMap = std::map<GeoRegionUID, GeoRegionPtr>;
 using GeoRegionTreePtr = std::shared_ptr<GeoRegionTree>;
-
-using SessionNameType = std::string;
-
-#define GLOBAL_REGION_UID GeoRegionUID(0u)
-#define GLOBAL_REGION_STR std::to_string(GLOBAL_REGION_UID)
-#define AUTO_SESSION_NAME std::string()
-
-/// returns the unique identifier (UID) of the parent region specified via UID
-GeoRegionUID getParentUID(GeoRegionUID nUID) {
-    // we use GEO CODES for provincies/territories, census divisions, and dissemination areas
-    // (this means they can only be 2-digit, 4-digit, or 8-digit)
-    if(nUID < 100u) // we are already at the province/territory level; no parent
-        return GLOBAL_REGION_UID;
-    else if(nUID < 10000000u) { // we are at the census division level; get first two digits
-        assert(nUID >= 1000u && nUID < 10000u); // we should be in the 4-digit range
-        return nUID / 100u;
-    }
-    else { // we are at the dissemination area level; get first four digits
-        assert(nUID > 10000000u && nUID < 100000000u);
-        return nUID / 10000u;
-    }
-}
-
-/// returns the unique identifier (UID) of the parent region specified via a UID/value pair
-template<typename TKey, typename TVal>
-GeoRegionUID getParentUID(const std::pair<TKey, TVal>& oPair) {
-    return getParentUID(oPair.first); // assume first key is UID-related
-}
-
-/// returns the unique identifier (UID) of the parent region specified via GeoRegion
-GeoRegionUID getParentUID(const GeoRegion& oRegion);
-
-/// returns the unique identifier (UID) of the parent region specified via GeoRegionPtr
-GeoRegionUID getParentUID(const GeoRegionPtr& pRegion);
-
-/// returns the unique identifier (UID) of the parent region covering an input region range
-template<typename TIter>
-GeoRegionUID getParentUID(TIter iBegin, TIter iEnd) {
-    if(iBegin == iEnd)
-        return GLOBAL_REGION_UID;
-    std::set<GeoRegionUID> mParentUIDs;
-    for(; iBegin != iEnd; ++iBegin)
-        mParentUIDs.insert(getParentUID(*iBegin));
-    if(mParentUIDs.size() == 1u)
-        return *mParentUIDs.begin();
-    return getParentUID(mParentUIDs.begin(), mParentUIDs.end());
-}
 
 /// geographic region statistics data block; may be enlarged/shrunk based on app needs
 struct GeoRegionStats {
@@ -139,18 +90,6 @@ struct GeoRegion {
     /// the detailed geometry associated with this geographic region (may be null if too high level)
     Geometry pGeometry;
 };
-
-/// returns the unique identifier (UID) of the parent region specified via GeoRegion
-GeoRegionUID getParentUID(const GeoRegion& oRegion) {
-    return getParentUID(oRegion.nUID);
-}
-
-/// returns the unique identifier (UID) of the parent region specified via GeoRegionPtr
-GeoRegionUID getParentUID(const GeoRegionPtr& pRegion) {
-    if(!pRegion)
-        return GLOBAL_REGION_UID; // if the region is empty/unavailable, return global ID
-    return getParentUID(pRegion->nUID);
-}
 
 /// returns a geographic region map (UID,REGION) given an array of regions
 GeoRegionMap getGeoRegionMapFromArray(const GeoRegionArray& vRegions) {

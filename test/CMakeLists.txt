@@ -20,7 +20,7 @@ target_link_libraries(
 target_compile_definitions(
     covid19_p2p_geo_tests
         PUBLIC
-            DATA_ROOT=${DATA_ROOT}
+            -DDATA_ROOT="${DATA_ROOT}"
 )
 
 add_test(

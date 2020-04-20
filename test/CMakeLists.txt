@@ -5,6 +5,7 @@ target_sources(
     covid19_p2p_geo_tests
         PUBLIC
             "src/test_api.cpp"
+            "src/test_geo.cpp"
             "src/test_uids.cpp"
 )
 

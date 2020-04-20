@@ -93,7 +93,7 @@ struct GeoRegion {
 };
 
 /// returns a geographic region map (UID,REGION) given an array of regions
-GeoRegionMap getGeoRegionMapFromArray(const GeoRegionArray& vRegions) {
+inline GeoRegionMap getGeoRegionMapFromArray(const GeoRegionArray& vRegions) {
     GeoRegionMap mRegions;
     for(const auto& pRegion : vRegions)
         mRegions[pRegion->nUID] = pRegion;
@@ -101,7 +101,7 @@ GeoRegionMap getGeoRegionMapFromArray(const GeoRegionArray& vRegions) {
 }
 
 /// returns the bounding box (polygon) that envelopes all geometries in the given array
-Geometry getGeomArrayEnvelope(const GeomArray& vGeoms) {
+inline Geometry getGeomArrayEnvelope(const GeomArray& vGeoms) {
     geos::geom::GeometryFactory::Ptr pGeomFact = geos::geom::GeometryFactory::create();
     GeomArray vGeomClones;
     vGeomClones.reserve(vGeoms.size());
@@ -113,7 +113,7 @@ Geometry getGeomArrayEnvelope(const GeomArray& vGeoms) {
 }
 
 /// returns the bounding box (polygon) that envelopes all geometries/envelopes in the given array
-Geometry getGeomArrayEnvelope(const GeoRegionArray& vRegions) {
+inline Geometry getGeomArrayEnvelope(const GeoRegionArray& vRegions) {
     // note: if a region does not possess an actual geometry, we will use its envelope instead
     geos::geom::GeometryFactory::Ptr pGeomFact = geos::geom::GeometryFactory::create();
     GeomArray vGeomClones;
@@ -130,7 +130,7 @@ Geometry getGeomArrayEnvelope(const GeoRegionArray& vRegions) {
 }
 
 /// returns the bounding box (polygon) that envelopes all geometries in the given map
-Geometry getGeomArrayEnvelope(const GeoRegionMap& mRegions) {
+inline Geometry getGeomArrayEnvelope(const GeoRegionMap& mRegions) {
     return getGeomArrayEnvelope(getValArrayFromMap(mRegions));
 }
 

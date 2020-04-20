@@ -35,7 +35,7 @@ std::vector<std::string> readHDF5StrVecAttrib(const TDataset& oH5, const std::st
 }
 
 /// reads a vector of geometries encoded as WKB strings inside a buffer
-GeomArray readWKBGeometries(uint8_t* aBuffer, size_t nBufferSize, size_t nGeomCount) {
+inline GeomArray readWKBGeometries(uint8_t* aBuffer, size_t nBufferSize, size_t nGeomCount) {
     GeomArray vResult;
     vResult.reserve(nGeomCount);
     BufferStream ssBuffer(aBuffer, aBuffer + nBufferSize);
@@ -47,7 +47,7 @@ GeomArray readWKBGeometries(uint8_t* aBuffer, size_t nBufferSize, size_t nGeomCo
 }
 
 /// reads a vector of dissemination area geometries from an HDF5 object
-GeomArray readHDF5DAWKBGeometries(const H5::H5File& oH5Archive) {
+inline GeomArray readHDF5DAWKBGeometries(const H5::H5File& oH5Archive) {
     const hsize_t nDACount = readHDF5Int64Attrib<hsize_t>(oH5Archive, "da_count");
     const H5::DataSet oWKBDataset = oH5Archive.openDataSet("da_wkb");
     const H5::Attribute oWKBByteCountAttrib = oWKBDataset.openAttribute("byte_count");

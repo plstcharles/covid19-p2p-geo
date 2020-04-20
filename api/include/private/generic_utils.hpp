@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <sys/stat.h>
 #include <vector>
 
 //#include <lz4.h> // might add compression utils later
@@ -26,6 +27,11 @@ struct BufferStream: std::streambuf {
         this->setg((char*)pBegin, (char*)pBegin, (char*)pEnd);
     }
 };
+
+inline bool checkPathExists(const std::string& sFilePath) {
+    struct stat oBuffer;
+    return (stat(sFilePath.c_str(), &oBuffer) == 0);
+}
 
 template<typename TKey, typename TVal>
 std::vector<TKey> getKeyArrayFromMap(const std::map<TKey, TVal>& mMap) {

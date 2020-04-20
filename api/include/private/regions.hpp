@@ -48,6 +48,8 @@ inline GeoRegionTreePtr prepareHighLevelRegionTree(const std::string& sDataRootP
     GeoRegionTreePtr pHighLevelTree = GeoRegionTreeCacher::getGeoRegionTree(GLOBAL_REGION_STR);
     if(!pHighLevelTree) {
         const std::string sHighLevelHDF5FilePath = sDataRootPath + "/cd.hdf5";
+        if(!checkPathExists(sHighLevelHDF5FilePath))
+            throw std::runtime_error(std::string("invalid archive path: ") + sHighLevelHDF5FilePath);
         const GeoRegionMap& mHighLevelRegions = createHighLevelRegionMap(sHighLevelHDF5FilePath);
         std::pair<SessionNameType, GeoRegionTreePtr> oHighLevelTree =
                 GeoRegionTreeCacher::createGeoRegionTree(mHighLevelRegions);
@@ -63,6 +65,8 @@ inline GeoRegionTreePtr prepareRegionTree(const std::string& sUID, const std::st
     GeoRegionTreePtr pTree = GeoRegionTreeCacher::getGeoRegionTree(sUID);
     if(!pTree) {
         const std::string sHDF5FilePath = sDataRootPath + "/divisions/" + sUID +".hdf5";
+        if(!checkPathExists(sHDF5FilePath))
+            throw std::runtime_error(std::string("invalid archive path: ") + sHDF5FilePath);
         const GeoRegionMap& mRegions = createDisseminationAreaMap(sHDF5FilePath);
         std::pair<SessionNameType, GeoRegionTreePtr> oTree =
                 GeoRegionTreeCacher::createGeoRegionTree(mRegions);

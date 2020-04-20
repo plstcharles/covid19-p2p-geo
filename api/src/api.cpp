@@ -16,31 +16,50 @@ GeoRegionUID uid::getParentUID(const std::shared_ptr<GeoRegion>& pRegion) {
 std::map<SessionNameType, GeoRegionTreePtr> GeoRegionTreeCacher::s_mGeoTrees;
 std::mutex GeoRegionTreeCacher::s_oGeoTreeMapMutex;
 
-void prepareNear(double dLatitude, double dLongitude, const std::string& sDataRootPath) {
+const char* prepareNear(double dLatitude, double dLongitude, const char* acDataRootPath) {
+    const std::string sDataRootPath(acDataRootPath);
+    if(!checkPathExists(sDataRootPath))
+        throw std::runtime_error(std::string("invalid data root path: ") + sDataRootPath);
     GeoRegionTreePtr pHighLevelTree = prepareHighLevelRegionTree(sDataRootPath);
     assert(pHighLevelTree);
     const std::vector<GeoRegionPtr>& vHits = fetchRegionHits(dLatitude, dLongitude, pHighLevelTree);
-    for(GeoRegionPtr pHitRegion : vHits) {
+    std::stringstream ssStr;
+    size_t nResponseFileCount = 0u;
+    for(const GeoRegionPtr& pHitRegion : vHits) {
         assert(pHitRegion);
-        const std::string& sTargetSubRegion = std::to_string(pHitRegion->nUID);
-        prepareRegionTree(sTargetSubRegion, sDataRootPath);
+        const std::string& sSubRegion = std::to_string(pHitRegion->nUID);
+        const std::string sHDF5FilePath = sDataRootPath + "/divisions/" + sSubRegion + ".hdf5";
+        if(!checkPathExists(sHDF5FilePath)) {
+            if(nResponseFileCount > 0u)
+                ssStr << ",";
+            ssStr << sSubRegion;
+            nResponseFileCount += 1;
+        }
+        else
+            prepareRegionTree(sSubRegion, sDataRootPath);
     }
+    static std::string s_sResponseBuffer;
+    s_sResponseBuffer = ssStr.str();
+    return s_sResponseBuffer.c_str();
 }
 
-std::string fetchUID(double dLatitude, double dLongitude, const std::string& sDataRootPath) {
+uint32_t fetchUID(double dLatitude, double dLongitude, const char* acDataRootPath) {
+    const std::string sDataRootPath(acDataRootPath);
+    if(!checkPathExists(sDataRootPath))
+        throw std::runtime_error(std::string("invalid data root path: ") + sDataRootPath);
     GeoRegionTreePtr pHighLevelTree = prepareHighLevelRegionTree(sDataRootPath);
     assert(pHighLevelTree);
     const std::vector<GeoRegionPtr>& vHits = fetchRegionHits(dLatitude, dLongitude, pHighLevelTree);
-    for(GeoRegionPtr pHitRegion : vHits) {
+    for(const GeoRegionPtr& pHitRegion : vHits) {
         assert(pHitRegion);
         const std::string& sTargetSubRegion = std::to_string(pHitRegion->nUID);
         GeoRegionTreePtr pRegionTree = prepareRegionTree(sTargetSubRegion, sDataRootPath);
         assert(pRegionTree && pRegionTree->nParentUID == pHitRegion->nUID);
         GeoRegionPtr pResult = fetchRegion(dLatitude, dLongitude, pRegionTree);
         if(pResult)
-            return std::to_string(pResult->nUID);
+            return pResult->nUID;
     }
-    return GLOBAL_REGION_STR; // no clean intersection found, return global ID (0)
+    return GLOBAL_REGION_UID; // no clean intersection found, return global ID (0)
 }
 
 uint32_t getCachedRegionTreeCount() {
@@ -56,7 +75,10 @@ void releaseUnusedCache(double dTimeout_seconds) {
     }
 }
 
-void testRandomBuildAndQueries(const std::string& sDataRootPath) {
+void testRandomBuildAndQueries(const char* acDataRootPath) {
+    const std::string sDataRootPath(acDataRootPath);
+    if(!checkPathExists(sDataRootPath))
+        throw std::runtime_error(std::string("invalid data root path: ") + sDataRootPath);
     GeoRegionTreePtr pHighLevelTree = prepareHighLevelRegionTree(sDataRootPath);
     const std::string sHDF5DivisonsFolderPath = sDataRootPath + "/divisions/";
     const size_t nRandomBuildAndQueryCount = 1000u;
@@ -74,6 +96,8 @@ void testRandomBuildAndQueries(const std::string& sDataRootPath) {
         GeoRegionTreePtr pSubTree = GeoRegionTreeCacher::getGeoRegionTree(sTargetCDUID);
         if(!pSubTree) {
             const std::string sHDF5FilePath = sHDF5DivisonsFolderPath + sTargetCDUID + ".hdf5";
+            if(!checkPathExists(sHDF5FilePath))
+                throw std::runtime_error(std::string("invalid archive path: ") + sHDF5FilePath);
             auto tPreBuildTimestamp = std::chrono::high_resolution_clock::now();
             const GeoRegionMap& mSubRegions = createDisseminationAreaMap(sHDF5FilePath);
             if(std::rand() % 2) {

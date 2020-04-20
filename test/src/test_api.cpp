@@ -1,10 +1,8 @@
 #include <sys/stat.h>
 
 #ifdef __linux__
-#include <bits/stdc++.h>
 #include <iostream>
 #include <fstream>
-#include <sys/stat.h>
 #include <sys/types.h>
 #endif //def(__linux__)
 

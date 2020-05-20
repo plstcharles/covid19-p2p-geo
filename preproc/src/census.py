@@ -183,6 +183,28 @@ class CensusDataExtractor:
                          for ptuid in np.unique([cd_child["ptuid"] for cd_child in cd_children])}
             self._export_hdf5(dauid_map, cduid_map, ptuid_map, output_hdf5_path, compress_wkb_lz4)
 
+    def plot_da_stats(self):
+        """Computes, prints & plots useful statistics about dissemination areas."""
+        import plotly.express as px
+        df = pd.DataFrame(list(self.dauid_map.values()))
+        fig = px.density_contour(
+            df,
+            x="area",
+            y="pop",
+            marginal_x="histogram",
+            marginal_y="histogram",
+            range_x=[0, 2000],
+            range_y=[0, 2000],
+        )
+        fig.data[0].update(contours_coloring="fill", contours_showlabels=True)
+        fig.show()
+        below_100_pops = [m for m in self.dauid_map.values() if m["pop"] <= 100]
+        below_200_pops = [m for m in self.dauid_map.values() if m["pop"] <= 200]
+        print(f"DA count: {len(self.dauid_map)}")
+        print(f"\tDAs below 100 pop: {len(below_100_pops)} (population sum = {sum([int(m['pop']) for m in below_100_pops])})")
+        print(f"\tDAs below 200 pop: {len(below_200_pops)} (population sum = {sum([int(m['pop']) for m in below_200_pops])})")
+
+
     @staticmethod
     def _export_hdf5(
             dauid_map: typing.Dict[str, typing.Dict],

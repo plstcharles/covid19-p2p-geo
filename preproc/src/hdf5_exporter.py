@@ -12,6 +12,7 @@ def main(
         download_dir: typing.Optional[typing.AnyStr] = None,
         output_dir: typing.Optional[typing.AnyStr] = None,
         checksum: bool = True,
+        plot_da_stats: bool = False,
 ):
     """Downloads and extracts useful data from 2016 census records/boundaries.
 
@@ -29,6 +30,8 @@ def main(
         census_records_dir_path=records_dir_path,
         census_boundaries_dir_path=boundaries_dir_path,
     )
+    if plot_da_stats:
+        extractor.plot_da_stats()
     if output_dir is None:
         output_dir = download_dir
     output_full_hdf5_path = os.path.join(output_dir, "full.hdf5")

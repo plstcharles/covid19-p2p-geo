@@ -1,7 +1,9 @@
-# Geographic Data Preprocessing
+# COVI-Canada Geographic Data Preprocessing Package
 
 To download, process, and export the census data into HDF5 files, you will first
 have to setup a Python environment with the dependencies listed in ``conda-env.yml``.
+Using a conda environment is recommended over a regular virtualenv due to the use of
+GDAL, which is very often broken in PyPi, and works out-of-the-box in conda-forge.
 
 If Anaconda/Miniconda is installed on your machine, simply run:
 ```
@@ -16,3 +18,4 @@ You will then be ready to launch the preprocessing script:
   python hdf5_exporter.py
 ```
 All the necessary data will be automatically downloaded and packaged in ``../data``.
+

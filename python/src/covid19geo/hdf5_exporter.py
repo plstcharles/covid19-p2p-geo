@@ -3,7 +3,7 @@ import os
 import pathlib
 import typing
 
-import census
+import covid19geo.census
 
 logger = logging.getLogger(__name__)
 
@@ -22,11 +22,16 @@ def main(
     logging.basicConfig()
     logging.getLogger().setLevel(logging.NOTSET)
     if download_dir is None:
-        download_dir = pathlib.Path(__file__).parent.absolute().parents[1] / "data"
+        # by default, we will go up two directories to find the C++ project root;
+        # this might not be the correct default place to download stuff if you
+        # installed the Python package directly. In that case, make sure you provide
+        # a default argument!
+        download_dir = pathlib.Path(__file__).parent.absolute().parents[2] / "data"
+    logger.debug(f"path where data might be downloaded/unpacked: {download_dir}")
     os.makedirs(download_dir, exist_ok=True)
     records_dir_path, boundaries_dir_path = \
-        census.download_and_extract_census_data(download_dir, checksum)
-    extractor = census.CensusDataExtractor(
+        covid19geo.census.download_and_extract_census_data(download_dir, checksum)
+    extractor = covid19geo.census.CensusDataExtractor(
         census_records_dir_path=records_dir_path,
         census_boundaries_dir_path=boundaries_dir_path,
     )
@@ -36,7 +41,7 @@ def main(
         output_dir = download_dir
     output_full_hdf5_path = os.path.join(output_dir, "full.hdf5")
     extractor.export_full_hdf5(output_full_hdf5_path)
-    census.validate_exported_hdf5(output_full_hdf5_path)
+    covid19geo.census.validate_exported_hdf5(output_full_hdf5_path)
     output_cd_hdf5_path = os.path.join(output_dir, "cd.hdf5")
     extractor.export_cd_hdf5(output_cd_hdf5_path)
     output_da_hdf5_dir_path = os.path.join(output_dir, "divisions")

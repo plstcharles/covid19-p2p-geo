@@ -1,0 +1,14 @@
+include conda-env.yml
+include LICENSE
+include README.md
+include setup.cfg
+include setup.py
+include requirements.txt
+
+graft docs
+graft src
+graft tests
+include *.py
+
+global-exclude *.py[cod] __pycache__ *.so *.dylib *.bak
+

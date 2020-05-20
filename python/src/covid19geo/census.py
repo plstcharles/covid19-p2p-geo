@@ -10,7 +10,7 @@ import osr
 import pandas as pd
 import tqdm
 
-import utils
+import covid19geo.utils
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +258,7 @@ class CensusDataExtractor:
             census_records_dir_path: typing.AnyStr,
             expected_da_count: typing.Optional[int] = None,
     ):
-        census_records_file_path = utils.get_unique_file_by_extension(
+        census_records_file_path = covid19geo.utils.get_unique_file_by_extension(
             directory_path=census_records_dir_path,
             extension="_CSV_data.csv",
         )
@@ -294,7 +294,7 @@ class CensusDataExtractor:
             census_boundaries_dir_path: typing.AnyStr,
             project_epsg3347_to_epsg4326: bool = True,
     ):
-        census_boundaries_file_path = utils.get_unique_file_by_extension(
+        census_boundaries_file_path = covid19geo.utils.get_unique_file_by_extension(
             directory_path=census_boundaries_dir_path,
             extension=".shp",
         )
@@ -377,12 +377,12 @@ def _download_and_extract_census_records(
     census_records_path = os.path.join(download_dir, census_2016_csv_da_file_name)
     if not os.path.exists(census_records_path):
         logger.debug("downloading census 2016 csv da records (1.7GB total)")
-        utils.download_file_with_progress_bar(
+        covid19geo.utils.download_file_with_progress_bar(
             file_url=census_2016_csv_da_full_url,
             file_path=census_records_path,
         )
     if checksum:
-        census_records_md5 = utils.compute_md5_hash(census_records_path)
+        census_records_md5 = covid19geo.utils.compute_md5_hash(census_records_path)
         assert census_records_md5 == census_2016_csv_da_file_md5, \
             "census 2016 CSV records failed checksum:\n" \
             f"\t{census_records_md5}\n\t\tvs\n\t{census_2016_csv_da_file_md5}"
@@ -402,12 +402,12 @@ def _download_and_extract_census_boundaries(
     census_boundaries_path = os.path.join(download_dir, census_2016_boundaries_file_name)
     if not os.path.exists(census_boundaries_path):
         logger.debug("downloading census 2016 boundaries (67MB total)")
-        utils.download_file_with_progress_bar(
+        covid19geo.utils.download_file_with_progress_bar(
             file_url=census_2016_boundaries_url,
             file_path=census_boundaries_path,
         )
     if checksum:
-        census_boundaries_md5 = utils.compute_md5_hash(census_boundaries_path)
+        census_boundaries_md5 = covid19geo.utils.compute_md5_hash(census_boundaries_path)
         assert census_boundaries_md5 == census_2016_boundaries_md5, \
             "census 2016 boundaries failed checksum:\n" \
             f"\t{census_boundaries_md5}\n\t\tvs\n\t{census_2016_boundaries_md5}"

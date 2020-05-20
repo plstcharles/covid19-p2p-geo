@@ -19,6 +19,9 @@
 *.exe
 *.pch
 *.obj
+*.egg
+*.egg[s]
+*.egg-info
 __pycache__/
 
 # Packages #

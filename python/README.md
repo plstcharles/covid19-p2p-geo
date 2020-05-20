@@ -13,9 +13,10 @@ This should create a conda environment named ``covid19-p2p-geo``. To activate it
 ```
   conda activate covid19-p2p-geo
 ```
-You will then be ready to launch the preprocessing script:
+You will then be ready to install the python package and launch the preprocessing script:
 ```
-  python hdf5_exporter.py
+  pip install -e . --no-deps
+  python -m covid19geo.hdf5_exporter
 ```
 All the necessary data will be automatically downloaded and packaged in ``../data``.
 

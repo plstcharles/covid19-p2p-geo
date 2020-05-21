@@ -5,8 +5,6 @@ import zipfile
 
 import h5py
 import numpy as np
-import ogr
-import osr
 import pandas as pd
 import tqdm
 
@@ -148,6 +146,7 @@ class CensusDataExtractor:
                 for das in self.cduid_map.values()])
             fd.create_dataset("cd_stats", data=stats)
             cd_envelopes = []
+            import ogr  # we import gdal components just before use in case someone can't install
             for cd_children in self.cduid_map.values():
                 cd_geom = ogr.Geometry(ogr.wkbMultiPolygon)
                 for cd_child in cd_children:
@@ -299,6 +298,7 @@ class CensusDataExtractor:
             extension=".shp",
         )
         logger.debug(f"parsing boundaries shapefile: {census_boundaries_file_path}")
+        import ogr  # we import gdal components just before use in case someone can't install
         ogr_driver = ogr.GetDriverByName("ESRI Shapefile")
         boundaries_fd = ogr_driver.Open(census_boundaries_file_path, 0)
         boundaries_layer = boundaries_fd.GetLayer()
@@ -327,6 +327,7 @@ class CensusDataExtractor:
         dauid_map, cduid_map, ptuid_map = {}, {}, {}
         transform = None
         if project_epsg3347_to_epsg4326:
+            import osr  # we import gdal components just before use in case someone can't install
             source_ref, target_ref = osr.SpatialReference(), osr.SpatialReference()
             source_ref.ImportFromEPSG(3347)
             assert source_ref.IsSame(boundaries_layer.GetSpatialRef())

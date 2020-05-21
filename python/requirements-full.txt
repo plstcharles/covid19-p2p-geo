@@ -1,0 +1,11 @@
+# NOTE: GDAL will most likely break when installed via PyPI; use conda!
+gdal
+h5py
+lz4
+numpy
+pandas
+plotly
+pyproj
+requests
+shapely
+tqdm
